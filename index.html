@@ -25,6 +25,12 @@
         }
 
         .c-sys { color: #94a3b8; } 
+        #comments iframe {
+            min-height: 390px !important;
+            width: 100% !important;
+            border: none !important;
+            color-scheme: dark !important;
+        }
         .c-info { color: #38bdf8; text-shadow: 0 0 2px rgba(56, 189, 248, 0.2); } 
         .c-warn { color: #fbbf24; text-shadow: 0 0 2px rgba(251, 191, 36, 0.2); } 
         .c-err { color: #f87171; text-shadow: 0 0 2px rgba(248, 113, 113, 0.2); } 
@@ -636,7 +642,7 @@
             </div>
 
             <!-- Player Discussion Forum Window -->
-            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[460px] h-[500px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[500px] h-[600px] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
                     <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-comments mr-1.5"></i>玩家討論區</span>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-forum'); event.stopPropagation();"><i class="fas fa-times"></i></button>
@@ -1263,6 +1269,85 @@ const game = {
         });
         win.style.zIndex = "25";
     },
+    makeWindowsDraggable: function() {
+        const windows = document.querySelectorAll('.game-window');
+        windows.forEach(win => {
+            const header = win.querySelector('.window-header');
+            if (!header) return;
+            
+            header.style.cursor = 'move';
+            header.addEventListener('mousedown', dragStart);
+            header.addEventListener('touchstart', dragStart, { passive: true });
+            
+            let posX = 0, posY = 0, mouseX = 0, mouseY = 0;
+            
+            function dragStart(e) {
+                // Prevent dragging when clicking buttons, selects, or input elements
+                if (e.target.closest('button') || e.target.closest('i') || e.target.closest('input') || e.target.closest('select')) return;
+                
+                // Bring window to front
+                game.bringToFront(win);
+                
+                // For touch events
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                
+                mouseX = clientX;
+                mouseY = clientY;
+                
+                // Disable text selection during drag
+                document.body.style.userSelect = 'none';
+                
+                if (e.type === 'mousedown') {
+                    document.addEventListener('mousemove', dragMove);
+                    document.addEventListener('mouseup', dragEnd);
+                } else {
+                    document.addEventListener('touchmove', dragMove, { passive: false });
+                    document.addEventListener('touchend', dragEnd);
+                }
+            }
+            
+            function dragMove(e) {
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                
+                // Prevent scrolling on touch devices
+                if (e.type === 'touchmove') e.preventDefault();
+                
+                posX = mouseX - clientX;
+                posY = mouseY - clientY;
+                mouseX = clientX;
+                mouseY = clientY;
+                
+                // Calculate new position
+                let newTop = win.offsetTop - posY;
+                let newLeft = win.offsetLeft - posX;
+                
+                // Boundary checking so windows don't go off-screen
+                const minVisibleX = 50;
+                const minVisibleY = 30;
+                
+                if (newLeft < -win.offsetWidth + minVisibleX) newLeft = -win.offsetWidth + minVisibleX;
+                if (newLeft > window.innerWidth - minVisibleX) newLeft = window.innerWidth - minVisibleX;
+                if (newTop < 0) newTop = 0;
+                if (newTop > window.innerHeight - minVisibleY) newTop = window.innerHeight - minVisibleY;
+                
+                // Apply styling (override tailwind bottom/translate if set)
+                win.style.bottom = 'auto';
+                win.style.transform = 'none';
+                win.style.top = `${newTop}px`;
+                win.style.left = `${newLeft}px`;
+            }
+            
+            function dragEnd() {
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('touchmove', dragMove);
+                document.removeEventListener('touchend', dragEnd);
+            }
+        });
+    },
     switchLogTab: function(tab) {
         const sysBtn = document.getElementById('tab-log-sys-btn');
         const combatBtn = document.getElementById('tab-log-combat-btn');
@@ -1475,6 +1560,7 @@ const game = {
         this.renderMapSelect();
         this.checkSaveFile();
         this.switchForumTab('all');
+        this.makeWindowsDraggable();
         
         // Add window event listeners for Quickslots (F5-F12)
         window.addEventListener('keydown', (e) => {
