@@ -483,6 +483,11 @@
 const chineseNumbers = ["零","一","二","三","四","五","六","七","八","九","十"];
 function getChineseNumber(num) { return (num>=0 && num<=10) ? chineseNumbers[num] : num; }
 
+function canCastSpell(spellLevel, playerLevel) {
+    let reqLevel = spellLevel === 1 ? 1 : spellLevel * 4;
+    return playerLevel >= reqLevel;
+}
+
 // 新增 rollDice 函數，用來處理隨機骰子計算 (例如 '1d20' 或 '3d6')
 function rollDice(dice) {
     if (!dice || typeof dice !== 'string') return 0;
@@ -887,8 +892,21 @@ const game = {
         let keys = Object.keys(MAPS).filter(k => k !== 'antaras_lair');
         keys.sort((a, b) => MAPS[a].name.localeCompare(MAPS[b].name, 'zh-TW'));
         select.innerHTML = '';
-        keys.forEach(k => { select.innerHTML += `<option value="${k}">${MAPS[k].name}</option>`; });
-        select.innerHTML += `<option value="antaras_lair" class="text-yellow-500 font-bold">${MAPS['antaras_lair'].name}</option>`;
+        
+        const getMapLevelDesc = (mapId) => {
+            let map = MAPS[mapId];
+            if (!map || !map.monsters || map.monsters.length === 0) return '';
+            let levels = map.monsters.map(m => m.level);
+            let minLvl = Math.min(...levels);
+            let maxLvl = Math.max(...levels);
+            if (minLvl === maxLvl) return ` (Lv.${minLvl})`;
+            return ` (Lv.${minLvl}~${maxLvl})`;
+        };
+
+        keys.forEach(k => { 
+            select.innerHTML += `<option value="${k}">${MAPS[k].name}${getMapLevelDesc(k)}</option>`; 
+        });
+        select.innerHTML += `<option value="antaras_lair" class="text-yellow-500 font-bold">${MAPS['antaras_lair'].name}${getMapLevelDesc('antaras_lair')}</option>`;
         select.value = this.state.currentMap;
     },
 
@@ -1818,7 +1836,7 @@ const game = {
         availSpells.forEach(id => {
             let sp = SPELLS[id];
             if(!sp) return;
-            if(sp.type === 'attack' && this.state.level >= sp.level * 4) atkSel.innerHTML += `<option value="${id}">${sp.name}</option>`;
+            if(sp.type === 'attack' && canCastSpell(sp.level, this.state.level)) atkSel.innerHTML += `<option value="${id}">${sp.name}</option>`;
         });
         if (Array.from(atkSel.options).some(opt => opt.value === currentAtk)) atkSel.value = currentAtk;
         else { atkSel.value = 'none'; this.state.settings.autoAttack = 'none'; }
@@ -1828,7 +1846,7 @@ const game = {
         availSpells.forEach(id => {
             let sp = SPELLS[id];
             if(!sp) return;
-            if(sp.type === 'heal' && this.state.level >= sp.level * 4) healSel.innerHTML += `<option value="${id}">${sp.name}</option>`;
+            if(sp.type === 'heal' && canCastSpell(sp.level, this.state.level)) healSel.innerHTML += `<option value="${id}">${sp.name}</option>`;
         });
         if (Array.from(healSel.options).some(opt => opt.value === currentHeal)) healSel.value = currentHeal;
         else { healSel.value = 'none'; this.state.settings.autoHealSpell = 'none'; }
@@ -1875,7 +1893,7 @@ const game = {
             if (spellsByLevel[lvl].length > 0) {
                 let groupHtml = `<div class="mb-4"><div class="text-sm c-sys border-b border-gray-800 pb-1 mb-2">${getChineseNumber(lvl)}階魔法</div><div class="grid grid-cols-5 gap-2">`;
                 spellsByLevel[lvl].forEach(spell => {
-                    let canUse = this.state.level >= spell.level * 4;
+                    let canUse = canCastSpell(spell.level, this.state.level);
                     let isBuff = spell.type === 'buff', isPassive = spell.type === 'passive', isHeal = spell.type === 'heal';
                     let checked = this.state.settings.autoBuffs.includes(spell.id) ? 'checked' : '';
                     let equipMark = !this.state.spells.includes(spell.id) ? '<span class="text-xs c-warn block">[裝備]</span>' : '';
@@ -2051,7 +2069,7 @@ const game = {
         let sId = this.state.settings.autoAttack;
         if (sId === 'none' || !SPELLS[sId] || !this.getAvailableSpells().includes(sId)) return;
         let spell = SPELLS[sId];
-        if(this.state.level < spell.level * 4) return;
+        if(!canCastSpell(spell.level, this.state.level)) return;
         
         let dbf = this.state.targetMonster.debuffs || {};
         if (spell.id === 'darkness' && dbf.darkness > 0) return;
@@ -2541,7 +2559,7 @@ const game = {
 
                 for(let sId of this.state.settings.autoBuffs) {
                     let sp = SPELLS[sId];
-                    if(availSpells.includes(sId) && this.state.level >= sp.level * 4) {
+                    if(availSpells.includes(sId) && canCastSpell(sp.level, this.state.level)) {
                         let shouldCast = (!this.state.buffs[sId] || this.state.buffs[sId] <= 0);
 
                         if (shouldCast && sId !== 'cancel') { 
@@ -2567,7 +2585,7 @@ const game = {
                     let hId = this.state.settings.autoHealSpell;
                     if (hId && hId !== 'none' && availSpells.includes(hId)) {
                         let sp = SPELLS[hId];
-                        if (this.state.level >= sp.level * 4) {
+                        if (canCastSpell(sp.level, this.state.level)) {
                             let cost = this.getSpellCost(sp);
                             if(this.state.mp >= cost) {
                                 this.state.mp -= cost;
