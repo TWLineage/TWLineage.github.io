@@ -19,7 +19,7 @@
         }
         
         /* Typography styles */
-        h1, h2, h3, .c-title, #target-name, #ui-level {
+        h1, h2, h3, .c-title, #target-name-arena, #ui-level {
             font-family: 'Cinzel', serif;
             letter-spacing: 0.05em;
         }
@@ -291,10 +291,69 @@
             transition: all 0.2s;
         }
         .spell-grid-item:hover:not(.opacity-30) {
-            border-color: #4b5563;
-            background-color: #151a26;
             transform: translateY(-2px);
         }
+
+        /* Starry/Indigo Space Background */
+        #main-ui {
+            background: radial-gradient(circle at center, #111522 0%, #06070a 100%);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Glassmorphism Fantasy Window System */
+        .game-window {
+            background: rgba(10, 12, 18, 0.94);
+            border: 2px solid #5c4e37; /* gold-bronze border */
+            border-radius: 6px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255,255,255,0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .window-header {
+            background: linear-gradient(180deg, #2a2217 0%, #17120a 100%);
+            border-bottom: 2px solid #5c4e37;
+            padding: 8px 12px;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            color: #fbbf24;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Lineage Retro text shadow */
+        .text-shadow {
+            text-shadow: 1px 1px 2px #000000, 0 0 4px rgba(0,0,0,0.9);
+        }
+
+        /* Floating Damage text animation */
+        @keyframes float-damage {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            15% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(0.9); opacity: 0; }
+        }
+        .damage-number {
+            position: absolute;
+            font-family: 'Cinzel', 'JetBrains Mono', sans-serif;
+            font-weight: 900;
+            font-size: 1.5rem;
+            animation: float-damage 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            white-space: nowrap;
+            z-index: 100;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8);
+        }
+        .damage-player { color: #ffffff; } /* player dealt damage (white) */
+        .damage-monster { color: #ef4444; } /* monster dealt damage (red) */
+        .damage-heal { color: #10b981; } /* player healed (green) */
+        .damage-magic { color: #38bdf8; } /* magic cast / spell dmg (cyan) */
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col p-2">
@@ -351,130 +410,354 @@
     </div>
 
     <!-- 主遊戲介面 -->
-    <div id="main-ui" class="flex-1 flex gap-3 hidden h-full">
-        <!-- 左側：角色狀態 -->
-        <div class="w-1/4 flex flex-col gap-3 h-full">
-            <div class="panel-border p-5 flex-shrink-0 rounded-md">
-                <div class="c-title text-2xl mb-3 border-b border-gray-800 pb-2">角色狀態</div>
-                <div class="text-xl mb-2">等級 <span id="ui-level" class="c-warn font-bold">1</span></div>
-                <div class="space-y-2 mb-4">
-                    <div class="flex items-center">體力:<div class="bar-container flex-1"><div class="bar-fill hp" id="ui-hp-bar" style="width: 100%;"></div><span class="bar-text" id="ui-hp-text">12/12</span></div></div>
-                    <div class="flex items-center">魔力:<div class="bar-container flex-1"><div class="bar-fill mp" id="ui-mp-bar" style="width: 100%;"></div><span class="bar-text" id="ui-mp-text">10/10</span></div></div>
-                    <div class="flex items-center">經驗:<div class="bar-container flex-1"><div class="bar-fill exp" id="ui-exp-bar" style="width: 0%;"></div><span class="bar-text" id="ui-exp-text">0.00%</span></div></div>
+    <div id="main-ui" class="flex-1 flex flex-col relative hidden h-full pb-[145px]">
+        <!-- Top Viewport Area for Arena and Floating Windows -->
+        <div class="flex-1 w-full relative overflow-hidden min-h-0">
+            <!-- Starry Sky / Clouds is styled via radial-gradient on #main-ui -->
+            
+            <!-- Central Battle Arena -->
+            <div class="absolute left-1/2 top-[30px] -translate-x-1/2 flex items-stretch gap-3 z-10 w-[420px] select-none">
+                <!-- Center Panel -->
+                <div class="bg-[#0b1f36]/90 border-2 border-[#163a61] p-4 rounded-lg flex-1 text-center flex flex-col justify-between min-h-[220px] relative shadow-[0_15px_35px_rgba(0,0,0,0.85)]">
+                    <!-- Small dynamic player count pill -->
+                    <span class="absolute top-2.5 right-2.5 bg-black/60 text-green-400 font-bold border border-green-900/50 rounded-full px-2 py-0.5 text-[9px] flex items-center gap-1">
+                        <i class="fas fa-users text-[8px]"></i> 參與人數: 2
+                    </span>
+                    
+                    <!-- Target Boss Title -->
+                    <div>
+                        <h2 id="target-name-arena" class="c-err font-black text-xl tracking-wider text-shadow">尋找目標中...</h2>
+                        <div id="target-subtitle-arena" class="text-[#fbbf24] text-[10px] mt-0.5 font-bold flex items-center justify-center gap-1">
+                            ⚔️ 搜尋魔物中...
+                        </div>
+                    </div>
+
+                    <!-- Monster Icon Face with floating damage numbers wrapper -->
+                    <div class="relative w-[84px] h-[84px] mx-auto my-2 flex items-center justify-center">
+                        <!-- Shaking Oni face -->
+                        <div id="target-oni-face" class="text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] animate-pulse transition-all">👹</div>
+                        <!-- Absolute floating damage layer -->
+                        <div id="damage-container" class="absolute inset-0 pointer-events-none overflow-visible"></div>
+                    </div>
+
+                    <!-- Purple HP Bar -->
+                    <div class="w-full">
+                        <div class="w-full h-[18px] bg-black border border-[#222530] rounded-full overflow-hidden relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" id="target-hp-container-arena">
+                            <div class="bar-fill" id="target-hp-bar-arena" style="width: 100%; background: linear-gradient(90deg, #7c3aed 0%, #a855f7 100%); box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);"></div>
+                            <span class="absolute inset-0 text-center text-[10px] font-extrabold leading-[18px] text-white text-shadow font-mono" id="target-hp-text-arena">0/0</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 border-t border-gray-800 pt-4">
-                    <div>力量: <span id="ui-str" class="font-bold">8</span></div><div>防禦(AC): <span id="ui-ac" class="c-info font-bold">10</span></div>
-                    <div>敏捷: <span id="ui-dex" class="font-bold">8</span></div><div>魔防(MR): <span id="ui-mr" class="c-magic font-bold">0%</span></div>
-                    <div>體質: <span id="ui-con" class="font-bold">8</span></div><div>迴避(ER): <span id="ui-er" class="font-bold">0</span></div>
-                    <div>智力: <span id="ui-int" class="font-bold">8</span></div><div>額外傷害: <span id="ui-dmg" class="font-bold">0</span></div>
-                    <div>精神: <span id="ui-wis" class="font-bold">8</span></div><div>額外命中: <span id="ui-hit" class="font-bold">0</span></div>
+
+                <!-- Vertical Buttons Stack on Right -->
+                <div class="flex flex-col gap-2 justify-center w-[110px]">
+                    <button id="btn-auto-toggle-arena" class="btn-ui !py-2.5 text-xs font-bold w-full bg-red-950/60 border-red-800 text-red-200 hover:border-red-500" onclick="game.toggleAutoCombatArena()"><i class="fas fa-play mr-1"></i>開始自動</button>
+                    <button class="btn-ui !py-2.5 text-xs font-bold w-full border-orange-700 text-orange-200 hover:border-yellow-500" onclick="game.playerAttack()"><i class="fas fa-sword mr-1"></i>攻擊</button>
+                    <button class="btn-ui !py-2.5 text-xs font-bold w-full border-blue-800 text-blue-200 hover:border-blue-400" onclick="game.escapeToTown()"><i class="fas fa-sign-out-alt mr-1"></i>離開</button>
                 </div>
-                <div class="mt-4 border-t border-gray-800 pt-4 text-xl"><span class="c-warn">金幣: <span id="ui-adena" class="font-bold">0</span></span></div>
-                <div id="ui-buffs" class="mt-3 text-sm min-h-[28px] text-gray-400"></div>
             </div>
-            <div class="panel-border p-3 flex-shrink-0 rounded-md bg-zinc-900 border-zinc-800 flex items-center justify-between gap-3 shadow-inner">
-                <span class="c-magic font-bold ml-1">自動施放攻擊魔法:</span>
-                <select id="cfg-auto-attack" class="bg-black c-sys border border-gray-600 py-1 px-2 flex-1 rounded outline-none cursor-pointer" onchange="game.updateSettings()">
-                    <option value="none">無 (純物理攻擊)</option>
-                </select>
+
+            <!-- Character Info Window -->
+            <div id="win-status" class="game-window hidden absolute left-[20px] top-[20px] w-[330px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-user-shield mr-1.5"></i>角色狀態</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-status'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll text-sm">
+                    <div class="text-center pb-3 border-b border-zinc-800">
+                        <span class="text-base text-gray-400">等級</span>
+                        <span id="win-status-level" class="text-2xl text-[#fbbf24] font-black ml-1.5">1</span>
+                    </div>
+                    <div class="space-y-3 mt-4">
+                        <div class="flex items-center justify-between">體力 (HP): <div class="bar-container flex-1 max-w-[160px]"><div class="bar-fill hp" id="win-hp-bar" style="width: 100%;"></div><span class="bar-text" id="win-hp-text">12/12</span></div></div>
+                        <div class="flex items-center justify-between">魔力 (MP): <div class="bar-container flex-1 max-w-[160px]"><div class="bar-fill mp" id="win-mp-bar" style="width: 100%;"></div><span class="bar-text" id="win-mp-text">10/10</span></div></div>
+                        <div class="flex items-center justify-between">經驗 (EXP): <div class="bar-container flex-1 max-w-[160px]"><div class="bar-fill exp" id="win-exp-bar" style="width: 0%;"></div><span class="bar-text" id="win-exp-text">0.00%</span></div></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-3 mt-6 border-t border-gray-800 pt-4 text-xs">
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">力量 (STR): <span id="win-str" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">防禦 (AC): <span id="win-ac" class="c-info font-bold">10</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">敏捷 (DEX): <span id="win-dex" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">魔防 (MR): <span id="win-mr" class="c-magic font-bold">0%</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">體質 (CON): <span id="win-con" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">迴避 (ER): <span id="win-er" class="font-bold text-white">0</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">智力 (INT): <span id="win-int" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">額外傷害: <span id="win-dmg" class="font-bold text-white">0</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">精神 (WIS): <span id="win-wis" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-1">額外命中: <span id="win-hit" class="font-bold text-white">0</span></div>
+                    </div>
+                    
+                    <div class="mt-5 border-t border-gray-800 pt-4 flex items-center justify-between text-base">
+                        <span class="text-gray-400">目前持有金幣:</span>
+                        <span class="c-warn font-black font-mono"><span id="win-adena">0</span> 金幣</span>
+                    </div>
+                    <div class="mt-4 border-t border-gray-800 pt-3">
+                        <div class="text-xs text-gray-400 mb-1.5"><i class="fas fa-sparkles mr-1"></i>附加狀態與套裝：</div>
+                        <div id="win-buffs" class="text-xs min-h-[48px] bg-black/40 p-2 rounded border border-zinc-900 text-gray-300 leading-relaxed flex flex-wrap gap-1">無附加狀態</div>
+                    </div>
+                </div>
             </div>
-            <div class="panel-border p-4 flex-1 flex flex-col min-h-0 rounded-md">
-                <div class="c-title mb-2 text-xl border-b border-gray-800 pb-2"><span>系統與獲得資訊</span></div>
-                <div id="system-log" class="log-area flex-1 custom-scroll"></div>
+
+            <!-- Equipped & Bag Inventory Window -->
+            <div id="win-inventory" class="game-window hidden absolute left-[360px] top-[20px] w-[560px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-suitcase mr-1.5"></i>裝備與背包</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-inventory'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <!-- Body split side by side: left equipped, right inventory bag -->
+                <div class="window-body p-3 flex-1 flex gap-3 min-h-0">
+                    <!-- Equipped panel -->
+                    <div class="flex-1 flex flex-col h-full bg-slate-950/60 border border-slate-800 rounded p-2.5">
+                        <div class="c-title mb-2 text-xs border-b border-slate-800 pb-1.5 flex items-center justify-between"><span class="font-bold"><i class="fas fa-shield-alt mr-1"></i>目前裝備</span></div>
+                        <div id="win-equip-list" class="flex-1 overflow-y-auto custom-scroll space-y-1.5 pr-1 text-xs"></div>
+                    </div>
+                    <!-- Bag Panel -->
+                    <div class="flex-1 flex flex-col h-full bg-zinc-950/60 border border-zinc-800 rounded p-2.5">
+                        <div class="c-title mb-2 text-xs border-b border-zinc-800 pb-1.5 flex items-center justify-between"><span class="font-bold"><i class="fas fa-box-open mr-1"></i>背包物品</span></div>
+                        <div id="win-inventory-list" class="flex-1 overflow-y-auto custom-scroll space-y-1.5 pr-1 text-xs"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spells Window -->
+            <div id="win-spells" class="game-window hidden absolute right-[360px] top-[20px] w-[340px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-book mr-1.5"></i>已學習魔法</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-spells'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll flex flex-col justify-between">
+                    <div id="win-skill-list" class="flex-1 overflow-y-auto custom-scroll pr-1 space-y-4"></div>
+                    <div class="border-t border-gray-800 pt-3 mt-3 flex justify-between items-center text-xs">
+                        <span class="text-gray-400">目前施法限制:</span>
+                        <span class="text-[#fbbf24] font-bold">最高可使用至 <span id="win-max-spell-lv">一</span> 階魔法</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop & Settings Window -->
+            <div id="win-shop" class="game-window hidden absolute right-[20px] top-[20px] w-[380px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-store mr-1.5"></i>商店與設定</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-shop'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll pr-1 text-xs">
+                    <!-- Consumables shop -->
+                    <div class="c-title mb-2.5 border-b border-gray-800 pb-1.5 text-sm font-bold"><i class="fas fa-shopping-cart mr-1"></i>消耗品商店</div>
+                    <div class="grid grid-cols-1 gap-1.5 mb-6 bg-black/20 p-2 rounded border border-zinc-900">
+                        <div class="list-item"><span class="c-potion-red font-bold">治癒藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">37 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_red')">購買</button></div></div>
+                        <div class="list-item"><span class="c-potion-orange font-bold">強力治癒藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">200 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_orange')">購買</button></div></div>
+                        <div class="list-item"><span class="c-potion-white font-bold">終極治癒藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">600 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_clear')">購買</button></div></div>
+                        <div class="list-item"><span class="c-potion-blue font-bold">藍色藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">1046 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_blue')">購買</button></div></div>
+                        <div class="list-item"><span class="c-potion-purple font-bold">慎重藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">750 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_wisdom')">購買</button></div></div>
+                        <div class="list-item mt-1.5 border-t border-gray-800 pt-2"><span class="c-item">對武器施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">75,000 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_weapon')">購買</button></div></div>
+                        <div class="list-item"><span class="c-item">對盔甲施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">30,000 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_armor')">購買</button></div></div>
+                    </div>
+                    
+                    <!-- Automatic functions -->
+                    <div class="c-title mb-2.5 border-b border-gray-800 pb-1.5 text-sm font-bold"><i class="fas fa-cogs mr-1"></i>戰鬥輔助與自動施法</div>
+                    <div class="space-y-3 c-sys bg-black/40 p-3 rounded border border-zinc-900 mb-6">
+                        <div class="flex items-center justify-between flex-wrap gap-1.5 pb-2 border-b border-zinc-900/50">
+                            <span class="text-gray-300 font-bold">自動施放攻擊魔法:</span>
+                            <select id="win-cfg-auto-attack" class="bg-black text-[#38bdf8] border border-gray-700 py-0.5 px-2 rounded outline-none cursor-pointer text-xs" onchange="game.updateSettings()">
+                                <option value="none">無 (純物理攻擊)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center flex-wrap gap-2 pt-1">
+                            <span>體力低於</span><input type="number" id="win-cfg-hp-threshold" class="w-14 bg-black border border-gray-700 text-center text-white py-0.5 rounded text-xs" value="5" onchange="game.updateSettings()">
+                            <span>時自動喝:</span>
+                            <select id="win-cfg-hp-type" class="bg-black border border-gray-700 text-white py-0.5 px-1.5 rounded text-xs" onchange="game.updateSettings()">
+                                <option value="potion_red">治癒藥水</option><option value="potion_orange">強力治癒藥水</option><option value="potion_clear">終極治癒藥水</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <input type="checkbox" id="win-cfg-auto-buy" onchange="game.updateSettings()" class="w-3.5 h-3.5 accent-gray-500 cursor-pointer"> 
+                            <label for="win-cfg-auto-buy" class="cursor-pointer hover:text-white text-[11px] text-gray-400">藥水耗盡自動購買 100 瓶 (扣除金幣)</label>
+                        </div>
+                        <div class="flex items-center gap-1.5 border-b border-zinc-900/50 pb-2">
+                            <input type="checkbox" id="win-cfg-auto-mp" onchange="game.updateSettings()" class="w-3.5 h-3.5 accent-gray-500 cursor-pointer">
+                            <label for="win-cfg-auto-mp" class="cursor-pointer hover:text-white text-[11px] text-gray-400">自動購買使用 藍色藥水 (每次1瓶)</label>
+                        </div>
+                        <div class="flex items-center gap-1.5 border-b border-zinc-900/50 pb-2">
+                            <input type="checkbox" id="win-cfg-auto-wis" onchange="game.updateSettings()" class="w-3.5 h-3.5 accent-gray-500 cursor-pointer">
+                            <label for="win-cfg-auto-wis" class="cursor-pointer hover:text-white text-[11px] text-gray-400">自動購買使用 慎重藥水 (每次1瓶)</label>
+                        </div>
+                        
+                        <div class="flex items-center flex-wrap gap-2 pt-1">
+                            <span class="c-success font-bold">體力低於</span><input type="number" id="win-cfg-heal-threshold" class="w-14 bg-black border border-gray-700 text-center text-white py-0.5 rounded text-xs" value="50" onchange="game.updateSettings()">
+                            <span class="c-success font-bold">自動施放治癒:</span>
+                            <select id="win-cfg-heal-spell" class="bg-black border border-gray-700 text-white py-0.5 px-1.5 rounded flex-1 text-xs" onchange="game.updateSettings()"><option value="none">無</option></select>
+                        </div>
+                        <div class="text-[10px] text-gray-500 italic mt-0.5"><i class="fas fa-info-circle mr-1"></i>治癒魔法冷卻 3 秒，學會對應魔法後始可使用。</div>
+                        
+                        <div class="flex items-center flex-wrap gap-2 pt-2 border-t border-zinc-900/50 mt-1">
+                            <span class="c-magic font-bold">魔力高於</span><input type="number" id="win-cfg-auto-attack-mp" class="w-14 bg-black border border-gray-700 text-center text-white py-0.5 rounded text-xs" value="0" onchange="game.updateSettings()">
+                            <span class="c-magic font-bold">時才自動施法攻擊</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Archive System -->
+                    <div class="c-title mb-2.5 border-b border-gray-800 pb-1.5 text-sm font-bold"><i class="fas fa-save mr-1"></i>系統存檔</div>
+                    <div class="flex gap-3 bg-black/20 p-2.5 rounded border border-zinc-900">
+                         <button class="btn-ui flex-1 py-1.5 c-success border-green-800 hover:bg-green-950/80 !text-xs font-bold" onclick="game.saveGame()"><i class="fas fa-save mr-1"></i>儲存進度</button>
+                         <button class="btn-ui flex-1 py-1.5 c-err border-red-800 hover:bg-red-950/80 !text-xs font-bold" onclick="game.deleteSave()"><i class="fas fa-trash-alt mr-1"></i>刪除存檔</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Window -->
+            <div id="win-map" class="game-window hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] flex flex-col z-20" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-map-marked-alt mr-1.5"></i>地圖與瞬移</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-map'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-4 text-center">
+                    <div class="text-xs text-gray-400 mb-2">請選擇傳送目的地：</div>
+                    <select id="win-map-select" class="w-full bg-black text-[#fbbf24] font-bold border border-gray-700 py-1.5 px-3 rounded outline-none cursor-pointer text-sm mb-4" onchange="game.changeMap(this.value); game.toggleWindow('win-map');">
+                    </select>
+                    <button class="btn-ui w-full py-1.5 text-xs font-bold" onclick="game.toggleWindow('win-map')">關閉</button>
+                </div>
+            </div>
+
+            <!-- Logs Window -->
+            <div id="win-logs" class="game-window hidden absolute left-[20px] bottom-[20px] w-[460px] h-[340px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-history mr-1.5"></i>系統日誌與戰鬥資訊</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-logs'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="flex border-b border-zinc-800 text-xs select-none">
+                    <button id="tab-log-sys-btn" class="flex-1 py-1.5 bg-black/40 text-[#fbbf24] font-bold border-r border-zinc-800" onclick="game.switchLogTab('sys')">📢 系統廣播</button>
+                    <button id="tab-log-combat-btn" class="flex-1 py-1.5 bg-[#0f121a]/80 text-gray-500 font-bold" onclick="game.switchLogTab('combat')">⚔️ 戰鬥日誌</button>
+                </div>
+                <div class="window-body p-2 flex-1 overflow-hidden flex flex-col min-h-0 bg-black/10">
+                    <div id="win-system-log" class="flex-1 log-area custom-scroll text-[11px] overflow-y-auto leading-relaxed"></div>
+                    <div id="win-combat-log" class="flex-1 log-area custom-scroll text-[11px] overflow-y-auto hidden leading-relaxed"></div>
+                </div>
             </div>
         </div>
 
-        <!-- 中間：操作區 -->
-        <div class="w-2/4 flex flex-col h-full">
-            <div class="flex text-lg items-end gap-1 px-1">
-                <button class="tab-btn active" onclick="game.switchTab('inv')">裝備與背包</button>
-                <button class="tab-btn" onclick="game.switchTab('magic')">已學習魔法</button>
-                <button class="tab-btn" onclick="game.switchTab('shop')">商店與設定</button>
-            </div>
-            <div class="panel-border p-5 flex-1 flex flex-col min-h-0 relative rounded-b-md rounded-tr-md">
-                <div id="tab-inv" class="flex-1 flex gap-3 h-full overflow-hidden">
-                    <div class="flex-1 flex flex-col h-full bg-slate-900 border border-slate-700 rounded-md p-3">
-                        <div class="c-title mb-2 text-lg border-b border-slate-700 pb-1">目前裝備</div>
-                        <div id="equip-list" class="flex-1 overflow-y-auto custom-scroll space-y-1 pr-1"></div>
+        <!-- Classic Bottom Dashboard Pinned Overlay -->
+        <div class="bottom-dashboard flex items-center justify-between px-4 py-2 border-t-2 border-[#5c4e37] bg-gradient-to-b from-[#161922] to-[#0d0f14] fixed bottom-0 left-0 right-0 h-[145px] z-30 select-none shadow-[0_-5px_25px_rgba(0,0,0,0.9)]">
+            <!-- Left Section: Status -->
+            <div class="w-[200px] h-[125px] flex flex-col justify-between bg-black/40 border border-[#2a2c35] rounded p-1.5 text-sm">
+                <div class="flex justify-between items-center bg-[#1c1d22] px-2 py-0.5 rounded border border-[#3e404b]">
+                    <span class="text-[#f59e0b] font-bold text-xs uppercase">Lv.<span id="ui-level-bottom">1</span></span>
+                    <span id="ui-exp-bottom" class="text-white font-mono text-[11px]">0.00%</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1 mt-1 text-xs">
+                    <div class="flex items-center gap-1.5 bg-[#14151a] px-2 py-1 rounded border border-[#23242c]">
+                        <i class="fas fa-shield-alt text-[#38bdf8]" title="防禦力(AC)"></i>
+                        <span id="ui-ac-bottom" class="text-[#38bdf8] font-bold">10</span>
                     </div>
-                    <div class="flex-1 flex flex-col h-full bg-zinc-900 border border-zinc-700 rounded-md p-3">
-                        <div class="c-title mb-2 text-lg border-b border-zinc-700 pb-1"><span>背包清單</span></div>
-                        <div id="inventory-list" class="flex-1 overflow-y-auto custom-scroll space-y-1 pr-1"></div>
+                    <div class="flex items-center gap-1.5 bg-[#14151a] px-2 py-1 rounded border border-[#23242c]">
+                        <i class="fas fa-magic text-[#c084fc]" title="魔防(MR)"></i>
+                        <span id="ui-mr-bottom" class="text-[#c084fc] font-bold">0%</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-[#14151a] px-2 py-1 rounded border border-[#23242c]">
+                        <i class="fas fa-running text-green-400" title="迴避(ER)"></i>
+                        <span id="ui-er-bottom" class="text-green-400 font-bold">0</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-[#14151a] px-2 py-1 rounded border border-[#23242c]">
+                        <i class="fas fa-swords text-red-400" title="額外傷害"></i>
+                        <span id="ui-dmg-bottom" class="text-red-400 font-bold">0</span>
                     </div>
                 </div>
-                <div id="tab-magic" class="flex-1 flex flex-col h-full overflow-hidden hidden">
-                    <div class="c-title mb-3 text-xl border-b border-gray-800 pb-2 flex justify-between">
-                        <span>已學習魔法</span><span class="text-base c-sys font-normal">最高可使用至 <span id="ui-max-spell-lv">一</span> 階魔法</span>
-                    </div>
-                    <div id="skill-list" class="flex-1 overflow-y-auto custom-scroll pr-2 space-y-4"></div>
-                </div>
-                <div id="tab-shop" class="flex-1 flex flex-col h-full overflow-hidden hidden">
-                    <div class="flex-1 overflow-y-auto custom-scroll pr-2">
-                        <div class="c-title mb-3 border-b border-gray-800 pb-2 text-xl">消耗品商店</div>
-                        <div class="grid grid-cols-1 gap-3 mb-8">
-                            <div class="list-item"><span class="c-potion-red">治癒藥水</span> <div class="flex items-center gap-3"><span class="c-warn">37 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('potion_red')">購買</button></div></div>
-                            <div class="list-item"><span class="c-potion-orange">強力治癒藥水</span> <div class="flex items-center gap-3"><span class="c-warn">200 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('potion_orange')">購買</button></div></div>
-                            <div class="list-item"><span class="c-potion-white">終極治癒藥水</span> <div class="flex items-center gap-3"><span class="c-warn">600 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('potion_clear')">購買</button></div></div>
-                            <div class="list-item"><span class="c-potion-blue">藍色藥水</span> <div class="flex items-center gap-3"><span class="c-warn">1046 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('potion_blue')">購買</button></div></div>
-                            <div class="list-item"><span class="c-potion-purple">慎重藥水</span> <div class="flex items-center gap-3"><span class="c-warn">750 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('potion_wisdom')">購買</button></div></div>
-                            <div class="list-item mt-2 border-t border-gray-800 pt-4"><span class="c-item">對武器施法的卷軸</span> <div class="flex items-center gap-3"><span class="c-warn">75,000 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('scroll_weapon')">購買</button></div></div>
-                            <div class="list-item"><span class="c-item">對盔甲施法的卷軸</span> <div class="flex items-center gap-3"><span class="c-warn">30,000 金幣</span> <button class="btn-ui !px-3 !py-1" onclick="game.buyItem('scroll_armor')">購買</button></div></div>
-                        </div>
-                        <div class="c-title mb-3 border-b border-gray-800 pb-2 text-xl">自動功能設定</div>
-                        <div class="space-y-4 c-sys bg-gray-900 p-4 rounded border border-gray-800 mb-8">
-                            <div class="flex items-center flex-wrap gap-3">
-                                <span>體力低於</span><input type="number" id="cfg-hp-threshold" class="w-20 bg-black border border-gray-600 text-center text-white py-1 rounded" value="5" onchange="game.updateSettings()">
-                                <span>時自動使用:</span>
-                                <select id="cfg-hp-type" class="bg-black border border-gray-600 text-white py-1 px-2 rounded" onchange="game.updateSettings()">
-                                    <option value="potion_red">治癒藥水</option><option value="potion_orange">強力治癒藥水</option><option value="potion_clear">終極治癒藥水</option>
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-2 border-b border-gray-700 pb-4">
-                                <input type="checkbox" id="cfg-auto-buy" onchange="game.updateSettings()" class="w-5 h-5 accent-gray-500 cursor-pointer"> <label for="cfg-auto-buy" class="cursor-pointer hover:text-white">藥水耗盡時自動購買至 100 瓶 (將扣除金幣)</label>
-                            </div>
-                            <div class="flex items-center gap-2 mt-4">
-                                <input type="checkbox" id="cfg-auto-mp" onchange="game.updateSettings()" class="w-5 h-5 accent-gray-500 cursor-pointer"> <label for="cfg-auto-mp" class="cursor-pointer hover:text-white">自動購買並使用 藍色藥水 (每次1瓶)</label>
-                            </div>
-                            <div class="flex items-center gap-2 border-b border-gray-700 pb-4 mt-2">
-                                <input type="checkbox" id="cfg-auto-wis" onchange="game.updateSettings()" class="w-5 h-5 accent-gray-500 cursor-pointer"> <label for="cfg-auto-wis" class="cursor-pointer hover:text-white">自動購買並使用 慎重藥水 (每次1瓶)</label>
-                            </div>
-                            <div class="flex items-center flex-wrap gap-3 pt-2">
-                                <span class="c-success">體力低於</span><input type="number" id="cfg-heal-threshold" class="w-20 bg-black border border-gray-600 text-center text-white py-1 rounded" value="50" onchange="game.updateSettings()">
-                                <span class="c-success">時自動施放治癒法術:</span>
-                                <select id="cfg-heal-spell" class="bg-black border border-gray-600 text-white py-1 px-2 rounded flex-1" onchange="game.updateSettings()"><option value="none">無</option></select>
-                            </div>
-                            <div class="text-xs c-sys italic">治癒法術冷卻時間為 3 秒。必須先學會對應法術才會顯示。</div>
-                            <div class="flex items-center flex-wrap gap-3 pt-2 border-t border-gray-700 mt-2">
-                                <span class="c-magic">魔力大於</span><input type="number" id="cfg-auto-attack-mp" class="w-20 bg-black border border-gray-600 text-center text-white py-1 rounded" value="0" onchange="game.updateSettings()">
-                                <span class="c-magic">時才允許施放自動攻擊魔法</span>
-                            </div>
-                        </div>
-                        <div class="c-title mb-3 border-b border-gray-800 pb-2 text-xl">系統存檔</div>
-                        <div class="flex gap-4 c-sys bg-gray-900 p-4 rounded border border-gray-800">
-                             <button class="btn-ui flex-1 py-2 c-success border-green-800 hover:bg-green-900 !text-lg" onclick="game.saveGame()">儲存進度</button>
-                             <button class="btn-ui flex-1 py-2 c-err border-red-800 hover:bg-red-900 !text-lg" onclick="game.deleteSave()">刪除存檔</button>
-                        </div>
-                    </div>
+                <div class="flex items-center justify-between mt-1 bg-[#181920] px-2 py-1 rounded border border-[#2e2f3a] text-xs">
+                    <span class="text-[#facc15] font-bold"><i class="fas fa-coins text-[#facc15] mr-1"></i>金幣:</span>
+                    <span id="ui-adena-bottom" class="text-[#facc15] font-bold font-mono">0</span>
                 </div>
             </div>
-        </div>
 
-        <!-- 右側：戰鬥區 -->
-        <div class="w-1/4 flex flex-col gap-3 h-full">
-            <div class="panel-border p-4 flex-shrink-0 flex justify-between items-center rounded-md">
-                <span class="c-title text-xl">目前位置:</span>
-                <select id="map-select" class="bg-black c-sys border border-gray-600 py-1 px-2 rounded outline-none cursor-pointer" onchange="game.changeMap(this.value)"></select>
-            </div>
-            <div class="panel-border p-5 flex-shrink-0 text-center min-h-[110px] flex flex-col justify-center rounded-md bg-gray-900">
-                <div id="target-name" class="c-err font-bold text-2xl mb-4">尋找目標中...</div>
-                <div class="flex items-center justify-center">
-                    <span class="mr-3 c-sys">體力:</span>
-                    <div class="bar-container w-full max-w-[200px] hidden" id="target-hp-container"><div class="bar-fill hp" id="target-hp-bar" style="width: 100%;"></div></div>
+            <!-- Center Section: Dragon HP/MP Bar & Mini logs -->
+            <div class="flex-1 max-w-[600px] h-[125px] flex flex-col justify-between mx-4">
+                <!-- Dragon HP/MP Progress structure -->
+                <div class="relative flex items-center justify-between w-full h-[36px] bg-black/60 border border-[#2a2c35] rounded-sm px-1.5">
+                    <!-- HP Bar Left -->
+                    <div class="w-[45%] h-[18px] bg-black border border-[#222530] rounded-sm overflow-hidden relative shadow-inner">
+                        <div class="bar-fill hp" id="ui-hp-bar-bottom" style="width: 100%;"></div>
+                        <span class="absolute inset-0 text-center text-[10px] font-bold leading-[18px] text-white text-shadow font-mono" id="ui-hp-text-bottom">HP 12/12</span>
+                    </div>
+                    
+                    <!-- Center Dragon Separator -->
+                    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center">
+                        <div class="bg-gradient-to-b from-[#b49257] to-[#7c6235] p-1.5 rounded-full border-2 border-[#5c4e37] shadow-lg animate-pulse">
+                            <i class="fas fa-dragon text-black text-sm"></i>
+                        </div>
+                    </div>
+
+                    <!-- MP Bar Right -->
+                    <div class="w-[45%] h-[18px] bg-black border border-[#222530] rounded-sm overflow-hidden relative shadow-inner">
+                        <div class="bar-fill mp" id="ui-mp-bar-bottom" style="width: 100%;"></div>
+                        <span class="absolute inset-0 text-center text-[10px] font-bold leading-[18px] text-white text-shadow font-mono" id="ui-mp-text-bottom">MP 10/10</span>
+                    </div>
+                </div>
+
+                <!-- Mini unified scroll logs -->
+                <div class="flex-1 bg-black/70 border border-[#1b1c23] rounded mt-1 overflow-hidden p-1 flex flex-col min-h-0 text-[11px] font-mono text-gray-400">
+                    <div id="mini-log-area" class="flex-1 overflow-y-auto custom-scroll pr-1 leading-relaxed">
+                        <!-- Combines system & combat reports dynamically -->
+                    </div>
+                    <div class="border-t border-[#1f202b] pt-0.5 text-gray-600 flex justify-between px-1 text-[10px]">
+                        <span>[日誌廣播區]</span>
+                        <span class="italic">系統監控中...</span>
+                    </div>
                 </div>
             </div>
-            <div class="panel-border p-4 flex-1 flex flex-col min-h-0 rounded-md">
-                <div class="c-title mb-2 text-xl border-b border-gray-800 pb-2">戰鬥資訊</div>
-                <div id="combat-log" class="log-area flex-1 custom-scroll"></div>
+
+            <!-- Right Section: Quickslots & Icon Menu -->
+            <div class="w-[320px] h-[125px] flex flex-col justify-between">
+                <!-- Quickslots row F5-F12 -->
+                <div class="grid grid-cols-8 gap-1 h-[56px] items-center">
+                    <!-- F5 HP Potion Slot -->
+                    <div id="slot-f5" class="h-[48px] border border-[#3e3427] bg-[#14151a] rounded relative flex flex-col items-center justify-center cursor-pointer hover:border-yellow-500 hover:bg-white/5 transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]" onclick="game.triggerQuickslot('f5')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-500 font-bold">F5</span>
+                        <i class="fas fa-flask text-red-500 text-lg mt-1"></i>
+                        <span id="quick-potion-count" class="absolute bottom-0.5 right-1 text-[9px] text-white font-bold bg-black/60 px-0.5 rounded leading-none">x0</span>
+                    </div>
+                    <!-- F6 Magic Attack Slot -->
+                    <div id="slot-f6" class="h-[48px] border border-[#3e3427] bg-[#14151a] rounded relative flex flex-col items-center justify-center cursor-pointer hover:border-yellow-500 hover:bg-white/5 transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]" onclick="game.triggerQuickslot('f6')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-500 font-bold">F6</span>
+                        <i id="quick-attack-spell-icon" class="fas fa-bolt text-gray-700 text-lg mt-1"></i>
+                        <span id="quick-attack-spell-name" class="absolute bottom-0.5 text-[8px] text-[#38bdf8] font-bold max-w-full overflow-hidden text-ellipsis whitespace-nowrap scale-90">無</span>
+                    </div>
+                    <!-- F7-F12 slots -->
+                    <div id="slot-f7" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f7')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F7</span>
+                        <i class="fas fa-heart text-gray-700 text-base mt-1"></i>
+                        <span class="absolute bottom-0.5 text-[8px] text-gray-600 scale-90">治癒</span>
+                    </div>
+                    <div id="slot-f8" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f8')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F8</span>
+                        <i class="fas fa-wind text-gray-700 text-base mt-1"></i>
+                        <span class="absolute bottom-0.5 text-[8px] text-gray-600 scale-90">加速</span>
+                    </div>
+                    <div id="slot-f9" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f9')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F9</span>
+                        <i class="fas fa-shield text-gray-700 text-base mt-1"></i>
+                    </div>
+                    <div id="slot-f10" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f10')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F10</span>
+                        <i class="fas fa-sword text-gray-700 text-base mt-1"></i>
+                    </div>
+                    <div id="slot-f11" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f11')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F11</span>
+                        <i class="fas fa-magic text-gray-700 text-base mt-1"></i>
+                    </div>
+                    <div id="slot-f12" class="h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-65 cursor-pointer hover:border-yellow-600" onclick="game.triggerQuickslot('f12')">
+                        <span class="absolute top-0.5 left-1 text-[8px] text-gray-600 font-bold">F12</span>
+                        <i class="fas fa-cog text-gray-700 text-base mt-1"></i>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="grid grid-cols-6 gap-1 h-[32px] mt-1.5">
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-status')"><i class="fas fa-user-shield"></i>角色</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-inventory')"><i class="fas fa-suitcase"></i>背包</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-spells')"><i class="fas fa-book mr-1"></i>魔法</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-shop')"><i class="fas fa-store"></i>商店</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-map')"><i class="fas fa-map-marked-alt"></i>地圖</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-logs')"><i class="fas fa-file-alt"></i>日誌</button>
+                </div>
             </div>
         </div>
     </div>
@@ -882,13 +1165,138 @@ const game = {
         potionCooldown: 0, autoHealCd: 0, enchantTargetKey: null, zombieTick: 0, monsterSpecialTick: 0, antarasDeadUntil: 0
     },
 
+    // Helper function to manage windows
+    toggleWindow: function(winId) {
+        const win = document.getElementById(winId);
+        if (!win) return;
+        if (win.classList.contains('hidden')) {
+            win.classList.remove('hidden');
+            this.bringToFront(win);
+        } else {
+            win.classList.add('hidden');
+        }
+    },
+    bringToFront: function(win) {
+        const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs'];
+        windows.forEach(id => {
+            const w = document.getElementById(id);
+            if (w) w.style.zIndex = "10";
+        });
+        win.style.zIndex = "25";
+    },
+    switchLogTab: function(tab) {
+        const sysBtn = document.getElementById('tab-log-sys-btn');
+        const combatBtn = document.getElementById('tab-log-combat-btn');
+        const sysLog = document.getElementById('win-system-log');
+        const combatLog = document.getElementById('win-combat-log');
+        
+        if (tab === 'sys') {
+            sysBtn.className = 'flex-1 py-1.5 bg-black/40 text-[#fbbf24] font-bold border-r border-zinc-800';
+            combatBtn.className = 'flex-1 py-1.5 bg-[#0f121a]/80 text-gray-500 font-bold';
+            sysLog.classList.remove('hidden');
+            combatLog.classList.add('hidden');
+        } else {
+            combatBtn.className = 'flex-1 py-1.5 bg-black/40 text-[#fbbf24] font-bold border-l border-zinc-800';
+            sysBtn.className = 'flex-1 py-1.5 bg-[#0f121a]/80 text-gray-500 font-bold border-r border-zinc-800';
+            sysLog.classList.add('hidden');
+            combatLog.classList.remove('hidden');
+        }
+    },
+    // Floating damage numbers
+    spawnFloatingDamage: function(amount, type) {
+        const container = document.getElementById('damage-container');
+        if (!container) return;
+        
+        const el = document.createElement('div');
+        el.className = `damage-number ${type === 'player' ? 'damage-player' : (type === 'monster' ? 'damage-monster' : (type === 'heal' ? 'damage-heal' : 'damage-magic'))}`;
+        
+        // Random slight position offset
+        const xOffset = Math.floor(Math.random() * 60) - 30;
+        const yOffset = Math.floor(Math.random() * 20) - 10;
+        el.style.left = `${container.clientWidth / 2 - 10 + xOffset}px`;
+        el.style.top = `${container.clientHeight / 2 - 20 + yOffset}px`;
+        el.innerText = amount;
+        
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    },
+    // Escape or Travel helper
+    escapeToTown: function() {
+        this.changeMap('knight_village');
+        if (!document.getElementById('win-map').classList.contains('hidden')) {
+            this.toggleWindow('win-map');
+        }
+    },
+    // Toggle Arena Auto Combat button
+    toggleAutoCombatArena: function() {
+        const btn = document.getElementById('btn-auto-toggle-arena');
+        if (this.state.isPlaying) {
+            this.stopBattle();
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-play mr-1"></i>開始自動';
+                btn.className = "btn-ui !py-2.5 text-xs font-bold w-full bg-red-950/60 border-red-800 text-red-200 hover:border-red-500";
+            }
+            this.logSystem('停止自動戰鬥。');
+        } else {
+            this.startBattle();
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-pause mr-1"></i>停止自動';
+                btn.className = "btn-ui !py-2.5 text-xs font-bold w-full bg-red-800 border-red-500 text-white hover:bg-red-900";
+            }
+            this.logSystem('開始自動戰鬥！');
+        }
+    },
+    appendMiniLog: function(msg, icon, colorClass) {
+        const el = document.getElementById('mini-log-area');
+        if (!el) return;
+        el.insertAdjacentHTML('beforeend', `<div class="${colorClass} py-0.5 border-b border-zinc-950/10 flex items-start gap-1"><span class="flex-shrink-0">${icon}</span><span class="flex-1">${msg}</span></div>`);
+        el.scrollTop = el.scrollHeight;
+        if (el.children.length > 20) el.firstChild.remove();
+    },
+    triggerQuickslot: function(slotId) {
+        if (slotId === 'f5') {
+            // Drink red potion or current hp potion
+            let type = this.state.settings.autoHpType;
+            let potKey = null;
+            for(let k in this.state.inventory) { if(this.state.inventory[k].itemId === type) { potKey = k; break; } }
+            if (potKey && this.state.inventory[potKey].count > 0) {
+                this.usePotion(potKey);
+            } else {
+                this.logSystem(`快捷鍵 F5：身上沒有 ${ITEMS[type]?.name || '治癒藥水'}！`, 'danger');
+            }
+        } else if (slotId === 'f6') {
+            // Trigger magic attack if bound
+            let sId = this.state.settings.autoAttack;
+            if (sId !== 'none' && SPELLS[sId]) {
+                if (this.state.targetMonster) {
+                    this.playerMagicAttack();
+                } else {
+                    this.logSystem(`快捷鍵 F6：沒有戰鬥目標！`, 'warn');
+                }
+            } else {
+                this.logSystem(`快捷鍵 F6：目前無設定自動攻擊魔法！`, 'warn');
+            }
+        } else {
+            this.logSystem(`快捷鍵 ${slotId.toUpperCase()} 目前無綁定功能。`, 'normal');
+        }
+    },
+
     init: function() {
         this.renderMapSelect();
         this.checkSaveFile();
+        
+        // Add window event listeners for Quickslots (F5-F12)
+        window.addEventListener('keydown', (e) => {
+            if (['F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key)) {
+                e.preventDefault();
+                const slotId = e.key.toLowerCase();
+                this.triggerQuickslot(slotId);
+            }
+        });
     },
 
     renderMapSelect: function() {
-        const select = document.getElementById('map-select');
+        const select = document.getElementById('win-map-select');
         let keys = Object.keys(MAPS).filter(k => k !== 'antaras_lair');
         keys.sort((a, b) => MAPS[a].name.localeCompare(MAPS[b].name, 'zh-TW'));
         select.innerHTML = '';
@@ -1001,15 +1409,15 @@ const game = {
                 this.renderSkills();
                 this.updateSettingsUI();
                 
-                document.getElementById('cfg-hp-threshold').value = this.state.settings.autoHpThreshold;
-                document.getElementById('cfg-hp-type').value = this.state.settings.autoHpType || 'potion_red';
-                document.getElementById('cfg-auto-buy').checked = !!this.state.settings.autoBuyHp;
-                document.getElementById('cfg-auto-mp').checked = !!this.state.settings.autoBuyMp;
-                document.getElementById('cfg-auto-wis').checked = !!this.state.settings.autoBuyWis;
-                document.getElementById('cfg-auto-attack-mp').value = this.state.settings.autoAttackMpThreshold;
-                document.getElementById('cfg-heal-threshold').value = this.state.settings.autoHealThreshold;
+                document.getElementById('win-cfg-hp-threshold').value = this.state.settings.autoHpThreshold;
+                document.getElementById('win-cfg-hp-type').value = this.state.settings.autoHpType || 'potion_red';
+                document.getElementById('win-cfg-auto-buy').checked = !!this.state.settings.autoBuyHp;
+                document.getElementById('win-cfg-auto-mp').checked = !!this.state.settings.autoBuyMp;
+                document.getElementById('win-cfg-auto-wis').checked = !!this.state.settings.autoBuyWis;
+                document.getElementById('win-cfg-auto-attack-mp').value = this.state.settings.autoAttackMpThreshold;
+                document.getElementById('win-cfg-heal-threshold').value = this.state.settings.autoHealThreshold;
                 
-                let mapSel = document.getElementById('map-select');
+                let mapSel = document.getElementById('win-map-select');
                 if (Array.from(mapSel.options).some(o => o.value === this.state.currentMap)) mapSel.value = this.state.currentMap;
                 else { this.state.currentMap = 'knight_village'; mapSel.value = 'knight_village'; }
                 
@@ -1025,39 +1433,61 @@ const game = {
     deleteSave: function() { localStorage.removeItem('lineageIdleSave'); this.logSystem('存檔已刪除。', 'danger'); },
 
     logCombat: function(msg, type='normal') {
-        const el = document.getElementById('combat-log');
+        const el = document.getElementById('win-combat-log');
         let color = 'c-sys';
         let icon = '🔹';
         if (type === 'danger') { color = 'c-err'; icon = '🩸'; }
         else if (type === 'hit') { color = 'c-info'; icon = '🗡️'; }
         else if (type === 'success') { color = 'c-success'; icon = '🛡️'; }
         else if (type === 'magic') { color = 'c-magic'; icon = '⚡'; }
-        el.insertAdjacentHTML('beforeend', `<div class="${color} py-0.5 border-b border-zinc-900/30 flex items-start gap-1"><span class="flex-shrink-0">${icon}</span><span class="flex-1">${msg}</span></div>`);
-        el.scrollTop = el.scrollHeight;
-        if(el.children.length > 50) el.firstChild.remove();
+        
+        if (el) {
+            el.insertAdjacentHTML('beforeend', `<div class="${color} py-0.5 border-b border-zinc-900/30 flex items-start gap-1"><span class="flex-shrink-0">${icon}</span><span class="flex-1">${msg}</span></div>`);
+            el.scrollTop = el.scrollHeight;
+            if(el.children.length > 50) el.firstChild.remove();
+        }
+        
+        // Append to mini log
+        this.appendMiniLog(msg, icon, color);
+        
+        // Float damage parsed from logs
+        if (type === 'hit') {
+            let match = msg.match(/造成\s*(\d+)\s*點傷害/);
+            if (match) this.spawnFloatingDamage(match[1], 'player');
+        } else if (type === 'danger') {
+            let match = msg.match(/造成\s*(\d+)\s*點傷害/);
+            if (match) this.spawnFloatingDamage(match[1], 'monster');
+        } else if (type === 'magic') {
+            let match = msg.match(/造成\s*(\d+)\s*點傷害/);
+            if (match) this.spawnFloatingDamage(match[1], 'magic');
+        } else if (msg.includes('恢復') || msg.includes('治癒')) {
+            let match = msg.match(/恢復了\s*(\d+)\s*點體力/);
+            if (match) this.spawnFloatingDamage(match[1], 'heal');
+        }
     },
     logSystem: function(msg, type='normal') {
-        const el = document.getElementById('system-log');
+        const el = document.getElementById('win-system-log');
         let color = 'c-sys';
         let icon = '📢';
         if (type === 'danger') { color = 'c-err'; icon = '💀'; }
         else if (type === 'reward') { color = 'c-success'; icon = '🪙'; }
         else if (type === 'blessed') { color = 'c-blessed'; icon = '✨'; }
         else if (type === 'enchant-success') { color = 'c-enchant-success'; icon = '⭐'; }
-        el.insertAdjacentHTML('beforeend', `<div class="${color} py-0.5 border-b border-zinc-900/30 flex items-start gap-1"><span class="flex-shrink-0">${icon}</span><span class="flex-1">${msg}</span></div>`);
-        el.scrollTop = el.scrollHeight;
-        if(el.children.length > 50) el.firstChild.remove();
+        
+        if (el) {
+            el.insertAdjacentHTML('beforeend', `<div class="${color} py-0.5 border-b border-zinc-900/30 flex items-start gap-1"><span class="flex-shrink-0">${icon}</span><span class="flex-1">${msg}</span></div>`);
+            el.scrollTop = el.scrollHeight;
+            if(el.children.length > 50) el.firstChild.remove();
+        }
+        
+        // Append to mini log
+        this.appendMiniLog(msg, icon, color);
     },
 
     switchTab: function(tabId) {
-        document.getElementById('tab-inv').classList.add('hidden');
-        document.getElementById('tab-magic').classList.add('hidden');
-        document.getElementById('tab-shop').classList.add('hidden');
-        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
-        if(tabId === 'inv') this.renderInventory();
-        if(tabId === 'magic') this.renderSkills();
+        if (tabId === 'inv') this.toggleWindow('win-inventory');
+        else if (tabId === 'magic') this.toggleWindow('win-spells');
+        else if (tabId === 'shop') this.toggleWindow('win-shop');
     },
 
     adjustStat: function(stat, amount) {
@@ -1341,36 +1771,80 @@ const game = {
     },
 
     updateUI: function() {
-        document.getElementById('ui-level').innerText = this.state.level;
-        document.getElementById('ui-hp-text').innerText = `${Math.floor(this.state.hp)}/${this.state.maxHp}`;
-        let hpRatio = this.state.hp / this.state.maxHp;
-        let hpBar = document.getElementById('ui-hp-bar');
-        hpBar.style.width = `${Math.max(0, hpRatio * 100)}%`;
-        if (hpRatio <= 0.3) {
-            hpBar.parentElement.classList.add('hp-low-breathing');
-        } else {
-            hpBar.parentElement.classList.remove('hp-low-breathing');
-        }
-        document.getElementById('ui-mp-text').innerText = `${Math.floor(this.state.mp)}/${this.state.maxMp}`;
-        document.getElementById('ui-mp-bar').style.width = `${Math.max(0, (this.state.mp/this.state.maxMp)*100)}%`;
+        // Character window & bottom level/EXP
+        if (document.getElementById('ui-level-bottom')) document.getElementById('ui-level-bottom').innerText = this.state.level;
+        if (document.getElementById('win-status-level')) document.getElementById('win-status-level').innerText = this.state.level;
         
         let reqExp = EXP_TABLE[this.state.level] || 36065092;
         let expPct = ((this.state.exp/reqExp)*100).toFixed(2);
-        document.getElementById('ui-exp-bar').style.width = `${Math.min(100, expPct)}%`;
-        document.getElementById('ui-exp-text').innerText = `${expPct}%`;
         
-        document.getElementById('ui-adena').innerText = this.state.adena.toLocaleString();
-        document.getElementById('ui-str').innerText = this.getEffStat('str') + (this.state.buffs.str_buff ? ' (+5)' : '');
-        document.getElementById('ui-dex').innerText = this.getEffStat('dex') + (this.state.buffs.dex_buff ? ' (+5)' : '');
-        document.getElementById('ui-con').innerText = this.getEffStat('con');
-        document.getElementById('ui-int').innerText = this.getEffStat('int');
-        document.getElementById('ui-wis').innerText = this.getEffStat('wis');
-        document.getElementById('ui-ac').innerText = this.getAC();
-        document.getElementById('ui-mr').innerText = this.getMR() + '%';
-        document.getElementById('ui-er').innerText = this.getER();
-        document.getElementById('ui-dmg').innerText = this.getMeleeDmg() >= 0 ? `+${this.getMeleeDmg()}` : this.getMeleeDmg();
-        document.getElementById('ui-hit').innerText = this.getMeleeHit() >= 0 ? `+${this.getMeleeHit()}` : this.getMeleeHit();
+        if (document.getElementById('ui-exp-bottom')) document.getElementById('ui-exp-bottom').innerText = `${expPct}%`;
+        if (document.getElementById('win-exp-bar')) document.getElementById('win-exp-bar').style.width = `${Math.min(100, expPct)}%`;
+        if (document.getElementById('win-exp-text')) document.getElementById('win-exp-text').innerText = `${expPct}%`;
 
+        // HP & MP bars
+        let hpRatio = this.state.hp / this.state.maxHp;
+        
+        // Bottom bar HP
+        let hpBarBottom = document.getElementById('ui-hp-bar-bottom');
+        if (hpBarBottom) {
+            hpBarBottom.style.width = `${Math.max(0, hpRatio * 100)}%`;
+            if (hpRatio <= 0.3) hpBarBottom.parentElement.classList.add('hp-low-breathing');
+            else hpBarBottom.parentElement.classList.remove('hp-low-breathing');
+        }
+        if (document.getElementById('ui-hp-text-bottom')) {
+            document.getElementById('ui-hp-text-bottom').innerText = `HP ${Math.floor(this.state.hp)}/${this.state.maxHp}`;
+        }
+        
+        // Status window HP
+        if (document.getElementById('win-hp-bar')) document.getElementById('win-hp-bar').style.width = `${Math.max(0, hpRatio * 100)}%`;
+        if (document.getElementById('win-hp-text')) document.getElementById('win-hp-text').innerText = `${Math.floor(this.state.hp)}/${this.state.maxHp}`;
+
+        // Bottom bar MP
+        if (document.getElementById('ui-mp-bar-bottom')) {
+            document.getElementById('ui-mp-bar-bottom').style.width = `${Math.max(0, (this.state.mp/this.state.maxMp)*100)}%`;
+        }
+        if (document.getElementById('ui-mp-text-bottom')) {
+            document.getElementById('ui-mp-text-bottom').innerText = `MP ${Math.floor(this.state.mp)}/${this.state.maxMp}`;
+        }
+        
+        // Status window MP
+        if (document.getElementById('win-mp-bar')) document.getElementById('win-mp-bar').style.width = `${Math.max(0, (this.state.mp/this.state.maxMp)*100)}%`;
+        if (document.getElementById('win-mp-text')) document.getElementById('win-mp-text').innerText = `${Math.floor(this.state.mp)}/${this.state.maxMp}`;
+
+        // Stats & gold
+        let adenaStr = this.state.adena.toLocaleString();
+        if (document.getElementById('ui-adena-bottom')) document.getElementById('ui-adena-bottom').innerText = adenaStr;
+        if (document.getElementById('win-adena')) document.getElementById('win-adena').innerText = adenaStr;
+
+        if (document.getElementById('win-str')) document.getElementById('win-str').innerText = this.getEffStat('str') + (this.state.buffs.str_buff ? ' (+5)' : '');
+        if (document.getElementById('win-dex')) document.getElementById('win-dex').innerText = this.getEffStat('dex') + (this.state.buffs.dex_buff ? ' (+5)' : '');
+        if (document.getElementById('win-con')) document.getElementById('win-con').innerText = this.getEffStat('con');
+        if (document.getElementById('win-int')) document.getElementById('win-int').innerText = this.getEffStat('int');
+        if (document.getElementById('win-wis')) document.getElementById('win-wis').innerText = this.getEffStat('wis');
+        
+        let acVal = this.getAC();
+        if (document.getElementById('ui-ac-bottom')) document.getElementById('ui-ac-bottom').innerText = acVal;
+        if (document.getElementById('win-ac')) document.getElementById('win-ac').innerText = acVal;
+        
+        let mrStr = this.getMR() + '%';
+        if (document.getElementById('ui-mr-bottom')) document.getElementById('ui-mr-bottom').innerText = mrStr;
+        if (document.getElementById('win-mr')) document.getElementById('win-mr').innerText = mrStr;
+        
+        let erVal = this.getER();
+        if (document.getElementById('ui-er-bottom')) document.getElementById('ui-er-bottom').innerText = erVal;
+        if (document.getElementById('win-er')) document.getElementById('win-er').innerText = erVal;
+        
+        let dmgVal = this.getMeleeDmg();
+        let dmgStr = dmgVal >= 0 ? `+${dmgVal}` : dmgVal;
+        if (document.getElementById('ui-dmg-bottom')) document.getElementById('ui-dmg-bottom').innerText = dmgStr;
+        if (document.getElementById('win-dmg')) document.getElementById('win-dmg').innerText = dmgStr;
+        
+        let hitVal = this.getMeleeHit();
+        let hitStr = hitVal >= 0 ? `+${hitVal}` : hitVal;
+        if (document.getElementById('win-hit')) document.getElementById('win-hit').innerText = hitStr;
+
+        // Buffs window
         let buffHtml = '';
         let sets = this.getSetBonuses();
         if (sets.active.length > 0) sets.active.forEach(sName => { buffHtml += `<span class="c-legendary mr-2">[${sName}]</span>`; });
@@ -1392,7 +1866,111 @@ const game = {
         if(this.state.buffs.petrified) buffHtml += '<span class="c-err mr-2">[石化]</span>';
         if(this.state.buffs.heal_erosion) buffHtml += '<span class="c-err mr-2">[治癒侵蝕]</span>';
         if(this.state.buffs.stun) buffHtml += '<span class="c-err mr-2">[衝暈]</span>';
-        document.getElementById('ui-buffs').innerHTML = buffHtml || '無附加狀態';
+        
+        let winBuffsEl = document.getElementById('win-buffs');
+        if (winBuffsEl) winBuffsEl.innerHTML = buffHtml || '無附加狀態';
+
+        // Update target monster in Battle Arena
+        let nameEl = document.getElementById('target-name-arena');
+        let subEl = document.getElementById('target-subtitle-arena');
+        let hpBarArena = document.getElementById('target-hp-bar-arena');
+        let hpTextArena = document.getElementById('target-hp-text-arena');
+        let oniEl = document.getElementById('target-oni-face');
+
+        if (this.state.targetMonster) {
+            let m = this.state.targetMonster;
+            let dbf = m.debuffs || {};
+            
+            // Name & Subtitle details
+            if (nameEl) {
+                if (m.isBoss) {
+                    nameEl.innerText = `★ ${m.name} Lv.${m.level} ★`;
+                    nameEl.className = 'font-black text-xl tracking-wider text-purple-400 text-shadow';
+                    
+                    let timeRemaining = this.state.antarasDeadUntil && Date.now() < this.state.antarasDeadUntil;
+                    subEl.innerHTML = `⚔️ BOSS 戰鬥中... (每 5 秒回血，擊殺才會重生)`;
+                } else {
+                    let lvlDiff = m.level - this.state.level;
+                    let nameColor = 'text-green-400';
+                    if (lvlDiff <= -10) nameColor = 'text-gray-400';
+                    else if (lvlDiff >= -9 && lvlDiff <= -5) nameColor = 'text-white';
+                    else if (lvlDiff >= 3 && lvlDiff <= 5) nameColor = 'text-yellow-400';
+                    else if (lvlDiff >= 6 && lvlDiff <= 9) nameColor = 'text-orange-500';
+                    else if (lvlDiff >= 10) nameColor = 'text-red-500';
+                    
+                    nameEl.innerText = `${m.name} Lv.${m.level}`;
+                    nameEl.className = `font-black text-xl tracking-wider text-shadow ${nameColor}`;
+                    subEl.innerHTML = `⚔️ 戰鬥進行中...`;
+                }
+            }
+
+            // Oni Face icon selector
+            if (oniEl) {
+                if (m.id === 'antaras') oniEl.innerText = '🐲';
+                else if (m.id === 'wyrm') oniEl.innerText = '🦖';
+                else if (m.id === 'death_knight') oniEl.innerText = '💀';
+                else if (m.id === 'black_elder') oniEl.innerText = '🧙';
+                else if (m.isBoss) oniEl.innerText = '👿';
+                else oniEl.innerText = '👹';
+                
+                // Add shake animation when player attacks
+                if (dbf.sleep > 0) {
+                    oniEl.className = 'text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] opacity-60';
+                    subEl.innerHTML = `💤 魔物沉睡中... (${dbf.sleep}s)`;
+                } else {
+                    oniEl.className = 'text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] animate-pulse';
+                }
+            }
+
+            // Target HP updates
+            let targetRatio = m.hp / m.maxHp;
+            if (hpBarArena) hpBarArena.style.width = `${Math.max(0, targetRatio * 100)}%`;
+            if (hpTextArena) hpTextArena.innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
+        } else {
+            if (nameEl) {
+                nameEl.innerText = "尋找目標中...";
+                nameEl.className = "c-err font-black text-xl tracking-wider text-shadow";
+            }
+            if (subEl) subEl.innerHTML = `⚔️ 搜尋魔物中...`;
+            if (oniEl) oniEl.innerText = '🔍';
+            if (hpBarArena) hpBarArena.style.width = "0%";
+            if (hpTextArena) hpTextArena.innerText = "0/0";
+        }
+
+        // F5 Potion count update
+        let type = this.state.settings.autoHpType || 'potion_red';
+        let count = 0;
+        for(let k in this.state.inventory) {
+            if(this.state.inventory[k].itemId === type) {
+                count = this.state.inventory[k].count;
+                break;
+            }
+        }
+        
+        let pCountEl = document.getElementById('quick-potion-count');
+        if (pCountEl) {
+            pCountEl.innerText = `x${count}`;
+            // Change flask color depending on current active potion
+            let flaskEl = pCountEl.previousElementSibling;
+            if (flaskEl) {
+                flaskEl.className = `fas fa-flask text-lg mt-1 ${type === 'potion_red' ? 'text-red-500' : (type === 'potion_orange' ? 'text-orange-500' : 'text-slate-100')}`;
+            }
+        }
+
+        // F6 Spell name update
+        let sId = this.state.settings.autoAttack;
+        let spellNameEl = document.getElementById('quick-attack-spell-name');
+        let spellIconEl = document.getElementById('quick-attack-spell-icon');
+        
+        if (spellNameEl && spellIconEl) {
+            if (sId !== 'none' && SPELLS[sId]) {
+                spellNameEl.innerText = SPELLS[sId].name;
+                spellIconEl.className = 'fas fa-bolt text-[#38bdf8] text-lg mt-1';
+            } else {
+                spellNameEl.innerText = '無';
+                spellIconEl.className = 'fas fa-bolt text-gray-700 text-lg mt-1';
+            }
+        }
     },
 
     getItemColorClass: function(item, def) {
@@ -1506,8 +2084,8 @@ const game = {
     },
     
     renderInventory: function() {
-        const invList = document.getElementById('inventory-list');
-        const eqList = document.getElementById('equip-list');
+        const invList = document.getElementById('win-inventory-list');
+        const eqList = document.getElementById('win-equip-list');
         if(!invList || !eqList) return;
         invList.innerHTML = ''; eqList.innerHTML = '';
         
@@ -1828,8 +2406,8 @@ const game = {
         } else this.logSystem(`金幣不足，無法購買 ${def.name}。`, 'danger');
     },
     updateSettingsUI: function() {
-        let atkSel = document.getElementById('cfg-auto-attack');
-        let healSel = document.getElementById('cfg-heal-spell');
+        let atkSel = document.getElementById('win-cfg-auto-attack');
+        let healSel = document.getElementById('win-cfg-heal-spell');
         let availSpells = this.getAvailableSpells();
         let currentAtk = this.state.settings.autoAttack;
         atkSel.innerHTML = '<option value="none">無 (純物理攻擊)</option>';
@@ -1851,18 +2429,19 @@ const game = {
         if (Array.from(healSel.options).some(opt => opt.value === currentHeal)) healSel.value = currentHeal;
         else { healSel.value = 'none'; this.state.settings.autoHealSpell = 'none'; }
         
-        document.getElementById('ui-max-spell-lv').innerText = getChineseNumber(Math.max(1, Math.floor(this.state.level/4)));
+        document.getElementById('win-max-spell-lv').innerText = getChineseNumber(Math.max(1, Math.floor(this.state.level/4)));
     },
     updateSettings: function() {
-        this.state.settings.autoHpThreshold = parseInt(document.getElementById('cfg-hp-threshold').value) || 5;
-        this.state.settings.autoHpType = document.getElementById('cfg-hp-type').value;
-        this.state.settings.autoBuyHp = document.getElementById('cfg-auto-buy').checked;
-        this.state.settings.autoBuyMp = document.getElementById('cfg-auto-mp').checked;
-        this.state.settings.autoBuyWis = document.getElementById('cfg-auto-wis').checked;
-        this.state.settings.autoAttack = document.getElementById('cfg-auto-attack').value;
-        this.state.settings.autoHealThreshold = parseInt(document.getElementById('cfg-heal-threshold').value) || 50;
-        this.state.settings.autoHealSpell = document.getElementById('cfg-heal-spell').value;
-        this.state.settings.autoAttackMpThreshold = parseInt(document.getElementById('cfg-auto-attack-mp').value) || 0;
+        this.state.settings.autoHpThreshold = parseInt(document.getElementById('win-cfg-hp-threshold').value) || 5;
+        this.state.settings.autoHpType = document.getElementById('win-cfg-hp-type').value;
+        this.state.settings.autoBuyHp = document.getElementById('win-cfg-auto-buy').checked;
+        this.state.settings.autoBuyMp = document.getElementById('win-cfg-auto-mp').checked;
+        this.state.settings.autoBuyWis = document.getElementById('win-cfg-auto-wis').checked;
+        this.state.settings.autoAttack = document.getElementById('win-cfg-auto-attack').value;
+        this.state.settings.autoHealThreshold = parseInt(document.getElementById('win-cfg-heal-threshold').value) || 50;
+        this.state.settings.autoHealSpell = document.getElementById('win-cfg-heal-spell').value;
+        this.state.settings.autoAttackMpThreshold = parseInt(document.getElementById('win-cfg-auto-attack-mp').value) || 0;
+        this.updateUI(); // Dynamic quickslots updates when settings change!
     },
     toggleAutoBuff: function(spellId, isChecked) {
         if(isChecked) { if(!this.state.settings.autoBuffs.includes(spellId)) this.state.settings.autoBuffs.push(spellId); }
@@ -1880,7 +2459,7 @@ const game = {
         return Math.max(1, spell.mp - reduction);
     },
     renderSkills: function() {
-        const list = document.getElementById('skill-list');
+        const list = document.getElementById('win-skill-list');
         list.innerHTML = '';
         let availSpells = this.getAvailableSpells();
         if(availSpells.length === 0) { list.innerHTML = '<div class="c-sys italic p-2 text-sm">尚未學習任何魔法。</div>'; return; }
@@ -1934,9 +2513,13 @@ const game = {
         if (mapId === 'antaras_lair' && this.state.antarasDeadUntil && Date.now() < this.state.antarasDeadUntil) {
             this.stopBattle();
             this.state.currentMap = mapId;
-            document.getElementById('target-name').innerText = `安塔瑞斯尚未重生... (${Math.ceil((this.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
-            document.getElementById('target-name').className = 'c-warn font-bold text-2xl mb-4';
-            document.getElementById('target-hp-container').classList.add('hidden');
+            if (document.getElementById('target-name-arena')) {
+                document.getElementById('target-name-arena').innerText = `安塔瑞斯尚未重生... (${Math.ceil((this.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
+                document.getElementById('target-name-arena').className = 'c-warn font-bold text-xl tracking-wider text-shadow';
+            }
+            if (document.getElementById('target-hp-container-arena')) {
+                document.getElementById('target-hp-container-arena').classList.add('hidden');
+            }
             this.logSystem(`移動到了 ${MAPS[mapId].name}。但安塔瑞斯尚未重生。`);
             setTimeout(() => { if(this.state.isPlaying && this.state.currentMap === 'antaras_lair') this.spawnMonster(); }, 5000);
             return;
@@ -1946,18 +2529,26 @@ const game = {
         this.logSystem(`移動到了 ${MAPS[mapId].name}。`);
         this.stopBattle();
         this.state.targetMonster = null;
-        document.getElementById('target-name').innerText = '尋找目標中...';
-        document.getElementById('target-name').className = 'c-err font-bold text-2xl mb-4';
-        document.getElementById('target-hp-container').classList.add('hidden');
+        if (document.getElementById('target-name-arena')) {
+            document.getElementById('target-name-arena').innerText = '尋找目標中...';
+            document.getElementById('target-name-arena').className = 'c-err font-black text-xl tracking-wider text-shadow';
+        }
+        if (document.getElementById('target-hp-container-arena')) {
+            document.getElementById('target-hp-container-arena').classList.add('hidden');
+        }
         setTimeout(() => this.startBattle(), 1000);
     },
     spawnMonster: function() {
         if(this.state.hp <= 0) return;
         
         if (this.state.currentMap === 'antaras_lair' && this.state.antarasDeadUntil && Date.now() < this.state.antarasDeadUntil) {
-            document.getElementById('target-name').innerText = `安塔瑞斯尚未重生... (${Math.ceil((this.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
-            document.getElementById('target-name').className = 'c-warn font-bold text-2xl mb-4';
-            document.getElementById('target-hp-container').classList.add('hidden');
+            if (document.getElementById('target-name-arena')) {
+                document.getElementById('target-name-arena').innerText = `安塔瑞斯尚未重生... (${Math.ceil((this.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
+                document.getElementById('target-name-arena').className = 'c-warn font-bold text-xl tracking-wider text-shadow';
+            }
+            if (document.getElementById('target-hp-container-arena')) {
+                document.getElementById('target-hp-container-arena').classList.add('hidden');
+            }
             setTimeout(() => { if(this.state.isPlaying && this.state.currentMap === 'antaras_lair') this.spawnMonster(); }, 5000);
             return;
         }
@@ -1966,7 +2557,9 @@ const game = {
         if (!map) {
             this.logSystem(`未知的地圖資料，自動返回騎士村。`, 'warn');
             this.state.currentMap = 'knight_village';
-            document.getElementById('map-select').value = 'knight_village';
+            if (document.getElementById('win-map-select')) {
+                document.getElementById('win-map-select').value = 'knight_village';
+            }
             return this.spawnMonster();
         }
 
@@ -1985,29 +2578,17 @@ const game = {
             this.logCombat(`【無所遁形術】看破了史巴托的潛伏，使其停止行動 5 秒。`, 'info');
         }
         
-        let nameEl = document.getElementById('target-name');
-        if (selected.isBoss) {
-            nameEl.innerText = `★ ${selected.name} ★`;
-            nameEl.className = 'font-bold text-2xl mb-4 text-purple-400';
-        } else {
-            let lvlDiff = selected.level - this.state.level;
-            let nameColor = '';
-            if (lvlDiff <= -10) nameColor = 'text-gray-400';
-            else if (lvlDiff >= -9 && lvlDiff <= -5) nameColor = 'text-white';
-            else if (lvlDiff >= -4 && lvlDiff <= 2) nameColor = 'text-green-400';
-            else if (lvlDiff >= 3 && lvlDiff <= 5) nameColor = 'text-yellow-400';
-            else if (lvlDiff >= 6 && lvlDiff <= 9) nameColor = 'text-orange-500';
-            else nameColor = 'text-red-500';
-            nameEl.innerText = selected.name;
-            nameEl.className = `font-bold text-2xl mb-4 ${nameColor}`;
+        this.updateUI();
+        if (document.getElementById('target-hp-container-arena')) {
+            document.getElementById('target-hp-container-arena').classList.remove('hidden');
         }
-        
-        document.getElementById('target-hp-container').classList.remove('hidden');
         this.updateMonsterHpBar();
     },
     updateMonsterHpBar: function() {
         if(!this.state.targetMonster) return;
-        document.getElementById('target-hp-bar').style.width = `${Math.max(0, (this.state.targetMonster.hp/this.state.targetMonster.maxHp)*100)}%`;
+        if (document.getElementById('target-hp-bar-arena')) {
+            document.getElementById('target-hp-bar-arena').style.width = `${Math.max(0, (this.state.targetMonster.hp/this.state.targetMonster.maxHp)*100)}%`;
+        }
     },
     playerAttack: function() {
         if(!this.state.targetMonster || this.state.hp <= 0 || (this.state.buffs.petrified > 0) || (this.state.buffs.stun > 0)) return;
@@ -2283,9 +2864,13 @@ const game = {
         
         if (m.id === 'antaras') this.state.antarasDeadUntil = Date.now() + 600000;
 
-        document.getElementById('target-name').innerText = '尋找目標中...';
-        document.getElementById('target-name').className = 'c-err font-bold text-2xl mb-4';
-        document.getElementById('target-hp-container').classList.add('hidden');
+        if (document.getElementById('target-name-arena')) {
+            document.getElementById('target-name-arena').innerText = '尋找目標中...';
+            document.getElementById('target-name-arena').className = 'c-err font-black text-xl tracking-wider text-shadow';
+        }
+        if (document.getElementById('target-hp-container-arena')) {
+            document.getElementById('target-hp-container-arena').classList.add('hidden');
+        }
         
         this.state.targetMonster = null;
         this.checkLevelUp();
@@ -2319,8 +2904,10 @@ const game = {
         this.logSystem(`你死亡了！失去經驗值。`, 'danger');
         this.updateUI();
         
-        document.getElementById('target-name').innerText = '尋找目標中...';
-        document.getElementById('target-name').className = 'c-err font-bold text-2xl mb-4';
+        if (document.getElementById('target-name-arena')) {
+            document.getElementById('target-name-arena').innerText = '尋找目標中...';
+            document.getElementById('target-name-arena').className = 'c-err font-black text-xl tracking-wider text-shadow';
+        }
         
         setTimeout(() => { this.logSystem('在村莊中復活。'); this.startBattle(); }, 3000);
     },
