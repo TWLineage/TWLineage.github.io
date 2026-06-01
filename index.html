@@ -634,6 +634,72 @@
                     <div id="win-combat-log" class="flex-1 log-area custom-scroll text-[11px] overflow-y-auto hidden leading-relaxed"></div>
                 </div>
             </div>
+
+            <!-- Player Discussion Forum Window -->
+            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[460px] h-[500px] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-comments mr-1.5"></i>玩家討論區</span>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-forum'); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <!-- Forum Navigation/Tags -->
+                <div id="forum-tabs" class="flex border-b border-zinc-800 text-[10px] select-none flex-wrap bg-[#10141f]">
+                    <button data-tab="all" class="flex-1 py-2 px-1 text-center bg-[#1a202c]/50 text-[#fbbf24] font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-yellow-500" onclick="game.switchForumTab('all')">💬 全部</button>
+                    <button data-tab="announce" class="flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-transparent" onclick="game.switchForumTab('announce')">📢 公告</button>
+                    <button data-tab="guild" class="flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-transparent" onclick="game.switchForumTab('guild')">⚔️ 招募</button>
+                    <button data-tab="trade" class="flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-transparent" onclick="game.switchForumTab('trade')">💰 交易</button>
+                    <button data-tab="guide" class="flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-transparent" onclick="game.switchForumTab('guide')">📖 攻略</button>
+                    <button data-tab="bug" class="flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold hover:text-yellow-400 border-t-2 border-t-transparent" onclick="game.switchForumTab('bug')">🐞 Bug</button>
+                </div>
+                <!-- Forum Content Body -->
+                <div class="window-body p-3.5 flex-1 overflow-y-auto custom-scroll text-sm bg-black/35 flex flex-col gap-3 min-h-0">
+                    <!-- Simulated Player Comments -->
+                    <div id="forum-messages-container" class="flex-1 overflow-y-auto custom-scroll space-y-3 pr-1 min-h-[140px] max-h-[220px]">
+                        <!-- Messages populated by JS -->
+                    </div>
+
+                    <!-- Add Simulated Comment Form -->
+                    <div class="border-t border-zinc-800 pt-3.5 flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="text" id="forum-nickname-input" placeholder="角色暱稱" class="w-[120px] bg-black/60 border border-zinc-700 px-2 py-1 text-xs text-white rounded focus:border-[#fbbf24] outline-none" value="無名冒險者" />
+                            <select id="forum-tag-select" class="bg-black/60 border border-zinc-700 px-2 py-1 text-xs text-white rounded focus:border-[#fbbf24] outline-none flex-1">
+                                <option value="general">💬 留言</option>
+                                <option value="announce">📢 公告</option>
+                                <option value="guild">⚔️ 招募公會</option>
+                                <option value="trade">💰 買賣交易</option>
+                                <option value="guide">📖 討論攻略</option>
+                                <option value="bug">🐞 回報 Bug</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="forum-message-input" placeholder="說點什麼吧..." class="flex-1 bg-black/60 border border-zinc-700 px-2 py-1 text-xs text-white rounded focus:border-[#fbbf24] outline-none font-sans" />
+                            <button class="btn-ui border-yellow-600 text-yellow-400 !px-4 text-xs py-1" onclick="game.postForumMessage()">發送</button>
+                        </div>
+                    </div>
+
+                    <!-- Giscus Real Comment Section integration -->
+                    <div class="border-t border-[#4a3e2c] pt-4 mt-2">
+                        <h3 class="text-xs font-bold text-[#fbbf24] mb-3 flex items-center gap-1.5"><i class="fas fa-plug text-[#38bdf8]"></i>Giscus 真實留言板</h3>
+                        <div id="comments" class="bg-black/30 p-2.5 border border-[#232731] rounded relative">
+                            <!-- Giscus Comment Script -->
+                            <script src="https://giscus.app/client.js"
+                                    data-repo="TWLineage/TWLineage.github.io"
+                                    data-repo-id="R_kgDOSt2l8A"
+                                    data-category="General"
+                                    data-category-id="DIC_kwDOSt2l8M4C-SB9"
+                                    data-mapping="pathname"
+                                    data-strict="0"
+                                    data-reactions-enabled="1"
+                                    data-emit-metadata="0"
+                                    data-input-position="bottom"
+                                    data-theme="dark_dimmed"
+                                    data-lang="zh-TW"
+                                    crossorigin="anonymous"
+                                    async>
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Classic Bottom Dashboard Pinned Overlay -->
@@ -750,13 +816,14 @@
                 </div>
 
                 <!-- Navigation Buttons -->
-                <div class="grid grid-cols-6 gap-1 h-[32px] mt-1.5">
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-status')"><i class="fas fa-user-shield"></i>角色</button>
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-inventory')"><i class="fas fa-suitcase"></i>背包</button>
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-spells')"><i class="fas fa-book mr-1"></i>魔法</button>
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-shop')"><i class="fas fa-store"></i>商店</button>
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-map')"><i class="fas fa-map-marked-alt"></i>地圖</button>
-                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[11px]" onclick="game.toggleWindow('win-logs')"><i class="fas fa-file-alt"></i>日誌</button>
+                <div class="grid grid-cols-7 gap-1 h-[32px] mt-1.5">
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-status')"><i class="fas fa-user-shield"></i>角色</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-inventory')"><i class="fas fa-suitcase"></i>背包</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-spells')"><i class="fas fa-book"></i>魔法</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-shop')"><i class="fas fa-store"></i>商店</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-map')"><i class="fas fa-map-marked-alt"></i>地圖</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px]" onclick="game.toggleWindow('win-logs')"><i class="fas fa-file-alt"></i>日誌</button>
+                    <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px] border-orange-700/60 text-orange-400" onclick="game.toggleWindow('win-forum')"><i class="fas fa-comments"></i>討論</button>
                 </div>
             </div>
         </div>
@@ -1162,7 +1229,19 @@ const game = {
         settings: { autoHpThreshold: 5, autoHpType: 'potion_red', autoBuyHp: false, autoBuyMp: false, autoBuyWis: false, autoAttack: 'none', autoAttackMpThreshold: 0, autoBuffs: [], autoHealSpell: 'none', autoHealThreshold: 50 },
         currentMap: 'knight_village', targetMonster: null,
         battleLoop: null, monsterLoop: null, magicLoop: null, regenLoop: null, tickLoop: null,
-        potionCooldown: 0, autoHealCd: 0, enchantTargetKey: null, zombieTick: 0, monsterSpecialTick: 0, antarasDeadUntil: 0
+        potionCooldown: 0, autoHealCd: 0, enchantTargetKey: null, zombieTick: 0, monsterSpecialTick: 0, antarasDeadUntil: 0,
+        currentForumTab: 'all',
+        forumMessages: [
+            { id: 1, author: '系統公告', tag: 'announce', content: '《天堂放置版v0.2.2 - 傳說巨龍篇》官方討論區正式開張！歡迎在此交流公會招募、交易物資及分享攻略。', time: '剛剛', likes: 45, laughs: 0, hearts: 68 },
+            { id: 2, author: 'HanLin', tag: 'guide', content: '法師初期建議優先點智力(INT)跟精神(WIS)，魔攻跟魔力回復速度會差很多，4階的擬似魔武是近戰法必備！', time: '3分鐘前', likes: 18, laughs: 0, hearts: 12 },
+            { id: 3, author: 'Amy', tag: 'guild', content: '【極道盟】招募熱血玩家！一起推王打寶，意者村莊右方會合！', time: '10分鐘前', likes: 9, laughs: 1, hearts: 15 },
+            { id: 4, author: 'Tom', tag: 'trade', content: '出售 +7 瑪那魔杖，意者帶價，或換 +7 死亡騎士的烈炎之劍！', time: '15分鐘前', likes: 6, laughs: 2, hearts: 3 },
+            { id: 5, author: 'GamerX', tag: 'bug', content: '回報：安塔瑞斯有時候重生時間過長，是否是設定問題？', time: '20分鐘前', likes: 4, laughs: 1, hearts: 2 },
+            { id: 6, author: '系統管理員', tag: 'bug', content: '回覆 @GamerX：感謝回報，安塔瑞斯為終極BOSS，重生時間為擊殺後10分鐘，此為正常設定。', time: '18分鐘前', likes: 8, laughs: 0, hearts: 5 },
+            { id: 7, author: 'HanLin', tag: 'general', content: '有人打龍嗎？', time: '30分鐘前', likes: 12, laughs: 0, hearts: 8 },
+            { id: 8, author: 'Tom', tag: 'general', content: '+1', time: '29分鐘前', likes: 5, laughs: 0, hearts: 2 },
+            { id: 9, author: 'Amy', tag: 'general', content: '我組隊', time: '28分鐘前', likes: 8, laughs: 0, hearts: 10 }
+        ]
     },
 
     // Helper function to manage windows
@@ -1177,7 +1256,7 @@ const game = {
         }
     },
     bringToFront: function(win) {
-        const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs'];
+        const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs', 'win-forum'];
         windows.forEach(id => {
             const w = document.getElementById(id);
             if (w) w.style.zIndex = "10";
@@ -1201,6 +1280,117 @@ const game = {
             sysLog.classList.add('hidden');
             combatLog.classList.remove('hidden');
         }
+    },
+    switchForumTab: function(tab) {
+        this.state.currentForumTab = tab;
+        
+        const tabsContainer = document.getElementById('forum-tabs');
+        if (tabsContainer) {
+            const buttons = tabsContainer.querySelectorAll('button');
+            buttons.forEach(btn => {
+                const btnTab = btn.getAttribute('data-tab');
+                if (btnTab === tab) {
+                    btn.className = 'flex-1 py-2 px-1 text-center bg-[#1a202c]/50 text-[#fbbf24] font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-yellow-500';
+                } else {
+                    btn.className = 'flex-1 py-2 px-1 text-center bg-[#10141f]/80 text-gray-400 font-bold border-r border-zinc-800 hover:text-yellow-400 border-t-2 border-t-transparent';
+                }
+            });
+        }
+        
+        this.renderForumMessages();
+    },
+    filterForum: function(tag) {
+        this.switchForumTab(tag);
+    },
+    postForumMessage: function() {
+        const nickEl = document.getElementById('forum-nickname-input');
+        const tagEl = document.getElementById('forum-tag-select');
+        const msgEl = document.getElementById('forum-message-input');
+        if (!nickEl || !tagEl || !msgEl) return;
+        
+        let nick = nickEl.value.trim() || '無名冒險者';
+        let tag = tagEl.value;
+        let msg = msgEl.value.trim();
+        
+        if (!msg) return;
+        
+        const newId = this.state.forumMessages.length > 0 ? Math.max(...this.state.forumMessages.map(m => m.id)) + 1 : 1;
+        this.state.forumMessages.unshift({
+            id: newId,
+            author: nick,
+            tag: tag,
+            content: msg,
+            time: '剛剛',
+            likes: 0,
+            laughs: 0,
+            hearts: 0
+        });
+        
+        msgEl.value = '';
+        this.renderForumMessages();
+    },
+    reactToForumMessage: function(msgId, reactionType) {
+        const msg = this.state.forumMessages.find(m => m.id === msgId);
+        if (msg && msg[reactionType] !== undefined) {
+            msg[reactionType]++;
+            this.renderForumMessages();
+        }
+    },
+    renderForumMessages: function() {
+        const container = document.getElementById('forum-messages-container');
+        if (!container) return;
+        
+        let filtered = this.state.forumMessages;
+        if (this.state.currentForumTab !== 'all') {
+            filtered = this.state.forumMessages.filter(m => m.tag === this.state.currentForumTab);
+        }
+        
+        container.innerHTML = '';
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="c-sys text-center py-6 text-xs italic">尚無相關主題留言。</div>';
+            return;
+        }
+        
+        const badgeColors = {
+            announce: 'text-amber-400 bg-amber-950/20 border-amber-700/50',
+            guild: 'text-green-400 bg-green-950/20 border-green-700/50',
+            trade: 'text-purple-400 bg-purple-950/20 border-purple-700/50',
+            guide: 'text-sky-400 bg-sky-950/20 border-sky-700/50',
+            bug: 'text-red-400 bg-red-950/20 border-red-700/50',
+            general: 'text-zinc-400 bg-zinc-900 border-zinc-700'
+        };
+        const badgeTexts = {
+            announce: '📢 公告',
+            guild: '⚔️ 招募',
+            trade: '💰 交易',
+            guide: '📖 攻略',
+            bug: '🐞 Bug',
+            general: '💬 留言'
+        };
+        
+        filtered.forEach(m => {
+            let badgeClass = badgeColors[m.tag] || badgeColors.general;
+            let badgeText = badgeTexts[m.tag] || badgeTexts.general;
+            
+            let html = `
+                <div class="p-2.5 bg-black/45 border border-zinc-800 rounded flex flex-col gap-2 hover:border-zinc-700 transition-colors">
+                    <div class="flex justify-between items-center text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] border font-bold ${badgeClass}">${badgeText}</span>
+                            <span class="font-bold text-yellow-500/90">${m.author}</span>
+                        </div>
+                        <span class="text-zinc-500 scale-90">${m.time}</span>
+                    </div>
+                    <div class="text-xs text-zinc-100 leading-relaxed font-sans">${m.content}</div>
+                    <div class="flex gap-2 text-xs border-t border-zinc-800/40 pt-1.5 mt-0.5 justify-end">
+                        <button class="px-2 py-0.5 rounded bg-zinc-800/40 hover:bg-zinc-800 border border-zinc-700/60 active:scale-110 transition-transform flex items-center gap-1 text-[10px] text-zinc-300 font-sans" onclick="game.reactToForumMessage(${m.id}, 'likes')">👍 ${m.likes}</button>
+                        <button class="px-2 py-0.5 rounded bg-zinc-800/40 hover:bg-zinc-800 border border-zinc-700/60 active:scale-110 transition-transform flex items-center gap-1 text-[10px] text-zinc-300 font-sans" onclick="game.reactToForumMessage(${m.id}, 'laughs')">😂 ${m.laughs}</button>
+                        <button class="px-2 py-0.5 rounded bg-zinc-800/40 hover:bg-zinc-800 border border-zinc-700/60 active:scale-110 transition-transform flex items-center gap-1 text-[10px] text-zinc-300 font-sans" onclick="game.reactToForumMessage(${m.id}, 'hearts')">❤️ ${m.hearts}</button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
     },
     // Floating damage numbers
     spawnFloatingDamage: function(amount, type) {
@@ -1284,6 +1474,7 @@ const game = {
     init: function() {
         this.renderMapSelect();
         this.checkSaveFile();
+        this.switchForumTab('all');
         
         // Add window event listeners for Quickslots (F5-F12)
         window.addEventListener('keydown', (e) => {
