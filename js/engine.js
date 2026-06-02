@@ -234,11 +234,12 @@ window.game = window.game || {};
 // Initialize state
 window.game.state = {
     isPlaying: false, level: 1, exp: 0, adena: 0, hp: 0, maxHp: 0, mp: 0, maxMp: 0,
-    baseStats: { str: 8, dex: 8, con: 8, int: 8, wis: 8 }, createPoints: 50, bonusPoints: 0,
+    class: 'prince', gender: 'male', bgmPlaying: false,
+    baseStats: { str: 13, dex: 10, con: 12, int: 11, wis: 11, cha: 13 }, createPoints: 10, bonusPoints: 0,
     inventory: {}, equipment: { weapon: null, shield: null, helmet: null, tshirt: null, armor: null, leggings: null, boots: null, cloak: null, gloves: null, amulet: null, earring1: null, earring2: null, ring1: null, ring2: null, belt: null },
     spells: [], buffs: {},
     settings: { autoHpThreshold: 5, autoHpType: 'potion_red', autoBuyHp: false, autoBuyMp: false, autoBuyWis: false, autoAttack: 'none', autoAttackMpThreshold: 0, autoBuffs: [], autoHealSpell: 'none', autoHealThreshold: 50 },
-    currentMap: 'knight_village', targetMonster: null,
+    currentMap: 'knight_village', targetMonsters: [null, null, null, null, null], targetMonster: null, selectedTargetIndex: 0,
     battleLoop: null, monsterLoop: null, magicLoop: null, regenLoop: null, tickLoop: null,
     potionCooldown: 0, autoHealCd: 0, enchantTargetKey: null, zombieTick: 0, monsterSpecialTick: 0, antarasDeadUntil: 0,
     currentForumTab: 'all',
@@ -255,12 +256,171 @@ window.game.state = {
     ]
 };
 
-// Window & panel layout controller
+// Export save file as downloadable JSON
+window.game.exportSave = function() {
+    const saveData = {
+        level: window.game.state.level, exp: window.game.state.exp, adena: window.game.state.adena,
+        hp: window.game.state.hp, maxHp: window.game.state.maxHp, mp: window.game.state.mp, maxMp: window.game.state.maxMp,
+        class: window.game.state.class, gender: window.game.state.gender,
+        baseStats: window.game.state.baseStats, bonusPoints: window.game.state.bonusPoints,
+        inventory: window.game.state.inventory, equipment: window.game.state.equipment, spells: window.game.state.spells,
+        settings: window.game.state.settings, currentMap: window.game.state.currentMap, antarasDeadUntil: window.game.state.antarasDeadUntil
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(saveData));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "lineage_idle_save.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    window.game.logSystem('存檔已成功匯出下載！', 'reward');
+};
+
+// Import save file from local device
+window.game.importSave = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.level && data.baseStats && data.inventory) {
+                localStorage.setItem('lineageIdleSave', JSON.stringify(data));
+                window.game.loadGame();
+                window.game.logSystem('存檔已成功上傳匯入！', 'reward');
+            } else {
+                alert('無效的存檔檔案格式！');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('解析存檔檔案失敗！');
+        }
+    };
+    reader.readAsText(file);
+};
+
+// Update the 5 monster slots cards
+window.game.updateMonsterSlotsUI = function() {
+    for (let i = 0; i < 5; i++) {
+        let m = window.game.state.targetMonsters[i];
+        let card = document.getElementById(`monster-slot-${i}`);
+        if (!card) continue;
+        
+        let nameEl = card.querySelector('.monster-name');
+        let subEl = card.querySelector('.monster-subtitle');
+        let avatarEl = card.querySelector('.monster-avatar');
+        let barFill = card.querySelector('.hp-bar');
+        let hpTextEl = card.querySelector('.monster-hp-text');
+        
+        if (m) {
+            // Apply active threat classes
+            card.classList.add('monster-slot-active');
+            card.classList.remove('pointer-events-none');
+            
+            // If this slot is the currently selected active target by player, add selection gold border!
+            if (window.game.state.selectedTargetIndex === i) {
+                card.classList.add('monster-slot-selected');
+            } else {
+                card.classList.remove('monster-slot-selected');
+            }
+            
+            // Name color by level difference
+            let lvlDiff = m.level - window.game.state.level;
+            let nameColor = 'text-green-400';
+            if (lvlDiff <= -10) nameColor = 'text-zinc-500';
+            else if (lvlDiff >= -9 && lvlDiff <= -5) nameColor = 'text-white';
+            else if (lvlDiff >= 3 && lvlDiff <= 5) nameColor = 'text-yellow-400';
+            else if (lvlDiff >= 6 && lvlDiff <= 9) nameColor = 'text-orange-500';
+            else if (lvlDiff >= 10) nameColor = 'text-red-500';
+            
+            if (m.isBoss) {
+                nameEl.innerText = `★ ${m.name} Lv.${m.level}`;
+                nameEl.className = 'monster-name font-black tracking-wider text-shadow text-purple-400 text-xs truncate';
+                subEl.innerHTML = `⚔️ BOSS 戰鬥中`;
+            } else {
+                nameEl.innerText = `${m.name} Lv.${m.level}`;
+                nameEl.className = `monster-name font-black tracking-wider text-shadow ${nameColor} text-xs truncate`;
+                subEl.innerHTML = `⚔️ 戰鬥進行中`;
+            }
+            
+            // Avatar emoji
+            if (m.id === 'antaras') avatarEl.innerText = '🐲';
+            else if (m.id === 'wyrm') avatarEl.innerText = '🦖';
+            else if (m.id === 'death_knight') avatarEl.innerText = '💀';
+            else if (m.id === 'black_elder') avatarEl.innerText = '🧙';
+            else if (m.isBoss) avatarEl.innerText = '👿';
+            else avatarEl.innerText = '👹';
+            
+            let dbf = m.debuffs || {};
+            if (dbf.sleep > 0) {
+                subEl.innerHTML = `💤 沉睡中 (${dbf.sleep}s)`;
+            } else if (dbf.slow > 0) {
+                subEl.innerHTML = `⏳ 緩速中 (${dbf.slow}s)`;
+            }
+            
+            let targetRatio = m.hp / m.maxHp;
+            barFill.style.width = `${Math.max(0, targetRatio * 100)}%`;
+            hpTextEl.innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
+        } else {
+            // Empty slot
+            card.classList.remove('monster-slot-active', 'monster-slot-selected');
+            card.classList.add('pointer-events-none');
+            
+            nameEl.innerText = "搜尋中...";
+            nameEl.className = "monster-name font-bold text-shadow text-xs truncate text-zinc-400";
+            subEl.innerHTML = `🔍 搜尋魔物中`;
+            avatarEl.innerText = '🔍';
+            barFill.style.width = "0%";
+            hpTextEl.innerText = "0/0";
+        }
+    }
+};
+
+// Select a monster card slot as current active target
+window.game.selectTargetSlot = function(index) {
+    if (window.game.state.targetMonsters[index]) {
+        window.game.state.selectedTargetIndex = index;
+        window.game.state.targetMonster = window.game.state.targetMonsters[index]; // backwards compatibility fallback
+        window.game.updateMonsterSlotsUI();
+        window.game.logSystem(`已鎖定目標: [Slot ${index + 1}] ${window.game.state.targetMonster.name}`);
+    }
+};
+
+
+window.game.centerWindow = function(win) {
+    let w = win.offsetWidth || parseInt(win.style.width) || 350;
+    let h = win.offsetHeight || parseInt(win.style.height) || 400;
+    
+    // Constrain width and height to active browser viewport size
+    const maxW = Math.floor(window.innerWidth * 0.95);
+    const maxH = Math.floor(window.innerHeight * 0.85);
+    
+    if (w > maxW) {
+        w = maxW;
+        win.style.width = `${w}px`;
+    }
+    if (h > maxH) {
+        h = maxH;
+        win.style.height = `${h}px`;
+    }
+    
+    const left = Math.max(10, Math.floor((window.innerWidth - w) / 2));
+    const top = Math.max(10, Math.floor((window.innerHeight - h) / 2));
+    
+    win.style.transform = 'none';
+    win.style.bottom = 'auto';
+    win.style.left = `${left}px`;
+    win.style.top = `${top}px`;
+};
+
 window.game.toggleWindow = function(winId) {
     const win = document.getElementById(winId);
     if (!win) return;
     if (win.classList.contains('hidden')) {
         win.classList.remove('hidden');
+        if (!win.style.top && !win.style.left) {
+            window.game.centerWindow(win);
+        }
         window.game.bringToFront(win);
     } else {
         win.classList.add('hidden');
@@ -268,7 +428,7 @@ window.game.toggleWindow = function(winId) {
 };
 
 window.game.bringToFront = function(win) {
-    const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs', 'win-forum'];
+    const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs', 'win-forum', 'enchant-modal'];
     windows.forEach(id => {
         const w = document.getElementById(id);
         if (w) w.style.zIndex = "10";
@@ -344,6 +504,89 @@ window.game.makeWindowsDraggable = function() {
             document.removeEventListener('mouseup', dragEnd);
             document.removeEventListener('touchmove', dragMove);
             document.removeEventListener('touchend', dragEnd);
+        }
+
+        // Top-left corner drag-to-resize support via the resize icon
+        const resizeIcon = win.querySelector('.fa-arrows-alt');
+        if (resizeIcon) {
+            resizeIcon.addEventListener('mousedown', resizeStart);
+            resizeIcon.addEventListener('touchstart', resizeStart, { passive: true });
+            
+            let startWidth = 0, startHeight = 0, startLeft = 0, startTop = 0;
+            let startMouseX = 0, startMouseY = 0;
+            
+            function resizeStart(e) {
+                e.stopPropagation(); // Stop window dragging trigger
+                window.game.bringToFront(win);
+                
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                
+                startMouseX = clientX;
+                startMouseY = clientY;
+                startWidth = win.offsetWidth;
+                startHeight = win.offsetHeight;
+                startLeft = win.offsetLeft;
+                startTop = win.offsetTop;
+                
+                document.body.style.userSelect = 'none';
+                
+                if (e.type === 'mousedown') {
+                    document.addEventListener('mousemove', resizeMove);
+                    document.addEventListener('mouseup', resizeEnd);
+                } else {
+                    document.addEventListener('touchmove', resizeMove, { passive: false });
+                    document.addEventListener('touchend', resizeEnd);
+                }
+            }
+            
+            function resizeMove(e) {
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                if (e.type === 'touchmove') e.preventDefault();
+                
+                let dx = clientX - startMouseX;
+                let dy = clientY - startMouseY;
+                
+                let newWidth = startWidth - dx;
+                let newHeight = startHeight - dy;
+                
+                const minW = 250;
+                const minH = 150;
+                
+                if (newWidth < minW) {
+                    newWidth = minW;
+                    dx = startWidth - minW;
+                }
+                if (newHeight < minH) {
+                    newHeight = minH;
+                    dy = startHeight - minH;
+                }
+                
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                if (newTop < 0) {
+                    newTop = 0;
+                    dy = -startTop;
+                    newHeight = startHeight - dy;
+                }
+                
+                win.style.transform = 'none';
+                win.style.bottom = 'auto';
+                win.style.width = `${newWidth}px`;
+                win.style.height = `${newHeight}px`;
+                win.style.left = `${newLeft}px`;
+                win.style.top = `${newTop}px`;
+            }
+            
+            function resizeEnd() {
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', resizeMove);
+                document.removeEventListener('mouseup', resizeEnd);
+                document.removeEventListener('touchmove', resizeMove);
+                document.removeEventListener('touchend', resizeEnd);
+            }
         }
     });
 };
@@ -723,7 +966,15 @@ window.game.openEnchantModal = function(itemKey) {
         }
     }
     if(!foundScrolls) scrollList.innerHTML = `<div class="c-sys italic p-2 text-sm">背包中沒有可用的強化卷軸。</div>`;
-    document.getElementById('enchant-modal').classList.remove('hidden');
+    
+    const win = document.getElementById('enchant-modal');
+    if (win) {
+        win.classList.remove('hidden');
+        if (!win.style.top && !win.style.left) {
+            window.game.centerWindow(win);
+        }
+        window.game.bringToFront(win);
+    }
 };
 
 window.game.closeEnchantModal = function() {
@@ -798,6 +1049,7 @@ window.game.updateUI = function() {
     let expPct = ((window.game.state.exp/reqExp)*100).toFixed(2);
     
     if (document.getElementById('ui-exp-bottom')) document.getElementById('ui-exp-bottom').innerText = `${expPct}%`;
+    if (document.getElementById('ui-exp-bar-bottom')) document.getElementById('ui-exp-bar-bottom').style.width = `${Math.min(100, parseFloat(expPct))}%`;
     if (document.getElementById('win-exp-bar')) document.getElementById('win-exp-bar').style.width = `${Math.min(100, expPct)}%`;
     if (document.getElementById('win-exp-text')) document.getElementById('win-exp-text').innerText = `${expPct}%`;
 
@@ -835,6 +1087,14 @@ window.game.updateUI = function() {
     if (document.getElementById('win-con')) document.getElementById('win-con').innerText = window.game.getEffStat('con');
     if (document.getElementById('win-int')) document.getElementById('win-int').innerText = window.game.getEffStat('int');
     if (document.getElementById('win-wis')) document.getElementById('win-wis').innerText = window.game.getEffStat('wis');
+    if (document.getElementById('win-cha')) document.getElementById('win-cha').innerText = window.game.getEffStat('cha');
+    
+    let classNameMap = {
+        prince: '王族', knight: '騎士', elf: '妖精', mage: '法師', dark_elf: '黑妖', dragon_knight: '龍騎士', illusionist: '幻術師'
+    };
+    if (document.getElementById('win-status-class-title')) {
+        document.getElementById('win-status-class-title').innerText = classNameMap[window.game.state.class] || '王族';
+    }
     
     let acVal = window.game.getAC();
     if (document.getElementById('ui-ac-bottom')) document.getElementById('ui-ac-bottom').innerText = acVal;
@@ -882,65 +1142,8 @@ window.game.updateUI = function() {
     let winBuffsEl = document.getElementById('win-buffs');
     if (winBuffsEl) winBuffsEl.innerHTML = buffHtml || '無附加狀態';
 
-    let nameEl = document.getElementById('target-name-arena');
-    let subEl = document.getElementById('target-subtitle-arena');
-    let hpBarArena = document.getElementById('target-hp-bar-arena');
-    let hpTextArena = document.getElementById('target-hp-text-arena');
-    let oniEl = document.getElementById('target-oni-face');
-
-    if (window.game.state.targetMonster) {
-        let m = window.game.state.targetMonster;
-        let dbf = m.debuffs || {};
-        
-        if (nameEl) {
-            if (m.isBoss) {
-                nameEl.innerText = `★ ${m.name} Lv.${m.level} ★`;
-                nameEl.className = 'font-black text-xl tracking-wider text-shadow text-purple-400';
-                subEl.innerHTML = `⚔️ BOSS 戰鬥中... (每 5 秒回血，擊殺才會重生)`;
-            } else {
-                let lvlDiff = m.level - window.game.state.level;
-                let nameColor = 'text-green-400';
-                if (lvlDiff <= -10) nameColor = 'text-gray-400';
-                else if (lvlDiff >= -9 && lvlDiff <= -5) nameColor = 'text-white';
-                else if (lvlDiff >= 3 && lvlDiff <= 5) nameColor = 'text-yellow-400';
-                else if (lvlDiff >= 6 && lvlDiff <= 9) nameColor = 'text-orange-500';
-                else if (lvlDiff >= 10) nameColor = 'text-red-500';
-                
-                nameEl.innerText = `${m.name} Lv.${m.level}`;
-                nameEl.className = `font-black text-xl tracking-wider text-shadow ${nameColor}`;
-                subEl.innerHTML = `⚔️ 戰鬥進行中...`;
-            }
-        }
-
-        if (oniEl) {
-            if (m.id === 'antaras') oniEl.innerText = '🐲';
-            else if (m.id === 'wyrm') oniEl.innerText = '🦖';
-            else if (m.id === 'death_knight') oniEl.innerText = '💀';
-            else if (m.id === 'black_elder') oniEl.innerText = '🧙';
-            else if (m.isBoss) oniEl.innerText = '👿';
-            else oniEl.innerText = '👹';
-            
-            if (dbf.sleep > 0) {
-                oniEl.className = 'text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] opacity-60';
-                subEl.innerHTML = `💤 魔物沉睡中... (${dbf.sleep}s)`;
-            } else {
-                oniEl.className = 'text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] animate-pulse';
-            }
-        }
-
-        let targetRatio = m.hp / m.maxHp;
-        if (hpBarArena) hpBarArena.style.width = `${Math.max(0, targetRatio * 100)}%`;
-        if (hpTextArena) hpTextArena.innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
-    } else {
-        if (nameEl) {
-            nameEl.innerText = "尋找目標中...";
-            nameEl.className = "c-err font-black text-xl tracking-wider text-shadow";
-        }
-        if (subEl) subEl.innerHTML = `⚔️ 搜尋魔物中...`;
-        if (oniEl) oniEl.innerText = '🔍';
-        if (hpBarArena) hpBarArena.style.width = "0%";
-        if (hpTextArena) hpTextArena.innerText = "0/0";
-    }
+    // Update the 5 monster slots cards
+    window.game.updateMonsterSlotsUI();
 
     let type = window.game.state.settings.autoHpType || 'potion_red';
     let count = 0;

@@ -7,49 +7,114 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("【網頁執行出錯】\n\n錯誤訊息: " + message + "\n檔案: " + source + "\n行號: " + lineno + "\n列號: " + colno);
+            return false;
+        };
+    </script>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col p-2">
 
     <!-- 創角畫面 -->
     <div id="char-creation-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay block">
-        <div class="panel-border p-8 max-w-lg w-full rounded-md">
-            <h1 class="text-4xl c-warn mb-6 text-center font-bold">天堂放置版</h1>
-            <div id="start-menu" class="flex flex-col gap-4 mb-6">
-                <button class="btn-ui py-3 text-xl w-full c-success" onclick="game.showCreation()">新冒險 (分配能力點數)</button>
-                <button id="btn-load-game" class="btn-ui py-3 text-xl w-full c-info" onclick="game.loadGame()">讀取存檔</button>
-            </div>
-            <div id="creation-menu" class="hidden">
-                <div class="c-sys mb-6 text-center text-lg">請分配您的初始能力點數。</div>
-                <div class="grid grid-cols-2 gap-y-4 mb-8 px-6 text-lg">
-                    <div class="flex items-center">力量 (STR): <span id="create-str" class="c-info w-8 inline-block text-right ml-2">8</span></div>
-                    <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('str', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('str', 1)">+</button></div>
-                    <div class="flex items-center">敏捷 (DEX): <span id="create-dex" class="c-info w-8 inline-block text-right ml-2">8</span></div>
-                    <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('dex', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('dex', 1)">+</button></div>
-                    <div class="flex items-center">體質 (CON): <span id="create-con" class="c-info w-8 inline-block text-right ml-2">8</span></div>
-                    <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('con', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('con', 1)">+</button></div>
-                    <div class="flex items-center">智力 (INT): <span id="create-int" class="c-info w-8 inline-block text-right ml-2">8</span></div>
-                    <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('int', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('int', 1)">+</button></div>
-                    <div class="flex items-center">精神 (WIS): <span id="create-wis" class="c-info w-8 inline-block text-right ml-2">8</span></div>
-                    <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('wis', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('wis', 1)">+</button></div>
+        <div class="panel-border p-6 max-w-4xl w-full rounded-md flex gap-5">
+            <!-- Left panel: Dynamic portrait & stats preview -->
+            <div class="w-[320px] bg-slate-950/80 border border-amber-900/50 rounded-lg p-5 flex flex-col justify-between items-center text-center relative shadow-inner">
+                <span class="absolute top-2 left-3 text-[10px] text-amber-500 font-bold uppercase tracking-wider font-mono">Avatar Card</span>
+                
+                <div id="class-portrait-box" class="w-36 h-36 rounded-full bg-zinc-900 border-2 border-amber-600/60 shadow-[0_0_15px_rgba(217,119,6,0.2)] flex items-center justify-center text-7xl select-none mt-4 transition-all">👑</div>
+                
+                <div class="w-full my-4">
+                    <h2 id="class-desc-title" class="text-2xl c-warn font-black tracking-wider text-shadow">王族 (Prince)</h2>
+                    <span id="class-desc-role" class="px-2 py-0.5 rounded text-[10px] bg-sky-950 border border-sky-700 text-sky-300 font-bold inline-block mt-1">輔助、BUFF、召喚</span>
+                    <p id="class-desc-text" class="text-xs text-zinc-400 mt-3 leading-relaxed min-h-[72px] text-left font-sans bg-black/40 p-2.5 rounded border border-zinc-900">王族可以建立血盟，增加盟員上限，並提供全隊增益BUFF。金幣收益額外+20%，經驗值獲取額外+10%。</p>
                 </div>
-                <div class="text-center mb-6 text-xl">剩餘點數: <span id="create-points" class="c-warn font-bold">50</span></div>
-                <div class="flex gap-4">
-                    <button class="btn-ui py-3 flex-1 text-lg" onclick="game.showStartMenu()">返回</button>
-                    <button id="btn-start" class="btn-ui py-3 flex-1 text-lg c-success" disabled onclick="game.startGame()">進入世界</button>
+
+                <div class="w-full border-t border-zinc-800 pt-3 text-xs text-left text-zinc-400 space-y-1">
+                    <div class="flex justify-between"><span>初始 HP 基礎:</span> <span id="class-base-hp-text" class="text-white font-bold font-mono">60</span></div>
+                    <div class="flex justify-between"><span>初始 MP 基礎:</span> <span id="class-base-mp-text" class="text-white font-bold font-mono">20</span></div>
+                </div>
+            </div>
+
+            <!-- Right panel: class grid & stats allocations -->
+            <div class="flex-1 flex flex-col justify-between">
+                <div>
+                    <h1 class="text-3xl c-warn mb-4 text-center font-bold tracking-wider">天堂放置版 - 創建角色</h1>
+                    
+                    <div id="start-menu" class="flex flex-col gap-4 mb-6 py-10 max-w-md mx-auto">
+                        <button class="btn-ui py-4 text-xl w-full c-success font-bold" onclick="game.showCreation()"><i class="fas fa-sword mr-2"></i>新冒險 (選擇職業與能力點數)</button>
+                        <button id="btn-load-game" class="btn-ui py-4 text-xl w-full c-info font-bold" onclick="game.loadGame()"><i class="fas fa-file-invoice mr-2"></i>讀取本機存檔</button>
+                    </div>
+
+                    <div id="creation-menu" class="hidden space-y-4">
+                        <!-- Step 1: Select Class & Gender -->
+                        <div class="bg-black/30 p-3 rounded-lg border border-zinc-800">
+                            <div class="text-xs c-sys mb-2 font-bold"><i class="fas fa-users mr-1"></i>1. 選擇職業與性別</div>
+                            
+                            <!-- Class selectors grid -->
+                            <div class="grid grid-cols-4 gap-2 mb-3">
+                                <button class="btn-ui class-sel-btn active text-xs font-bold py-1.5" data-class="prince" onclick="game.selectClass('prince')">王族</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="knight" onclick="game.selectClass('knight')">騎士</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="elf" onclick="game.selectClass('elf')">妖精</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="mage" onclick="game.selectClass('mage')">法師</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="dark_elf" onclick="game.selectClass('dark_elf')">黑妖</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="dragon_knight" onclick="game.selectClass('dragon_knight')">龍騎士</button>
+                                <button class="btn-ui class-sel-btn text-xs font-bold py-1.5" data-class="illusionist" onclick="game.selectClass('illusionist')">幻術師</button>
+                            </div>
+
+                            <!-- Gender selectors -->
+                            <div class="flex gap-2 justify-center">
+                                <button id="gender-male" class="btn-ui gender-sel-btn active px-6 text-xs py-1" onclick="game.selectGender('male')">男</button>
+                                <button id="gender-female" class="btn-ui gender-sel-btn px-6 text-xs py-1" onclick="game.selectGender('female')">女</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Stat Allocations -->
+                        <div class="bg-black/30 p-3 rounded-lg border border-zinc-800">
+                            <div class="text-xs c-sys mb-2 font-bold flex justify-between">
+                                <span><i class="fas fa-sliders-h mr-1"></i>2. 分配能力點數 (單項上限 25)</span>
+                                <span class="c-warn font-black">剩餘點數: <span id="create-points">10</span></span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-2.5 px-4 py-1 text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span>力量 (STR): <span id="create-str" class="c-info w-6 inline-block text-right ml-1">13</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('str', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('str', 1)">+</button></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span>敏捷 (DEX): <span id="create-dex" class="c-info w-6 inline-block text-right ml-1">10</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('dex', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('dex', 1)">+</button></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span>體質 (CON): <span id="create-con" class="c-info w-6 inline-block text-right ml-1">12</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('con', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('con', 1)">+</button></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span>智力 (INT): <span id="create-int" class="c-info w-6 inline-block text-right ml-1">11</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('int', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('int', 1)">+</button></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span>精神 (WIS): <span id="create-wis" class="c-info w-6 inline-block text-right ml-1">11</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('wis', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('wis', 1)">+</button></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span>魅力 (CHA): <span id="create-cha" class="c-info w-6 inline-block text-right ml-1">13</span></span>
+                                    <div class="flex gap-1.5"><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('cha', -1)">-</button><button class="btn-ui !px-2.5 !py-0.5" onclick="game.adjustStat('cha', 1)">+</button></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="creation-action-menu" class="flex gap-4 mt-4 hidden">
+                    <button class="btn-ui py-3 flex-1 text-lg" onclick="game.showStartMenu()">返回選單</button>
+                    <button id="btn-start" class="btn-ui py-3 flex-1 text-lg c-success font-bold" disabled onclick="game.startGame()"><i class="fas fa-flag-checkered mr-1"></i>進入天堂世界</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 強化 Modal -->
-    <div id="enchant-modal" class="fixed inset-0 z-40 items-center justify-center modal-overlay hidden">
-        <div class="panel-border p-6 max-w-md w-full rounded-md">
-            <h3 class="text-2xl c-warn mb-4 border-b border-gray-700 pb-2 font-bold">強化裝備</h3>
-            <div class="c-sys mb-4">請選擇要用來強化 <span id="enchant-target-name" class="font-bold text-xl"></span> 的卷軸：</div>
-            <div id="enchant-scroll-list" class="space-y-3 mb-6 max-h-56 overflow-y-auto custom-scroll pr-2"></div>
-            <div class="text-right border-t border-gray-700 pt-4"><button class="btn-ui py-2 px-6" onclick="game.closeEnchantModal()">取消</button></div>
-        </div>
-    </div>
 
     <!-- 詳細資訊 Modal -->
     <div id="item-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden" onclick="game.closeItemDetail()">
@@ -66,50 +131,119 @@
         <!-- Top Viewport Area for Arena and Floating Windows -->
         <div class="flex-1 w-full relative overflow-hidden min-h-0">
             
-            <!-- Central Battle Arena -->
-            <div class="absolute left-1/2 top-[30px] -translate-x-1/2 flex items-stretch gap-3 z-10 w-[420px] select-none">
-                <!-- Center Panel -->
-                <div class="bg-[#0b1f36]/90 border-2 border-[#163a61] p-4 rounded-lg flex-1 text-center flex flex-col justify-between min-h-[220px] relative shadow-[0_15px_35px_rgba(0,0,0,0.85)]">
-                    <!-- Small dynamic player count pill -->
-                    <span class="absolute top-2.5 right-2.5 bg-black/60 text-green-400 font-bold border border-green-900/50 rounded-full px-2 py-0.5 text-[9px] flex items-center gap-1">
-                        <i class="fas fa-users text-[8px]"></i> 參與人數: 2
-                    </span>
+            <!-- Central Battle Arena (Upgraded 5-slot grid for Version 3) -->
+            <div class="absolute left-1/2 top-[10px] -translate-x-1/2 flex flex-col gap-3.5 z-10 w-[980px] select-none">
+                
+                <!-- Horizontal Map controls -->
+                <div class="flex items-center justify-between bg-black/60 px-4 py-1.5 rounded border border-zinc-800 text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="c-warn font-bold"><i class="fas fa-map-marked-alt mr-1"></i>當前地圖:</span>
+                        <select id="win-arena-map-select" class="bg-slate-900 border border-zinc-700 text-[#fbbf24] py-0.5 px-2 rounded outline-none font-bold cursor-pointer" onchange="game.changeMap(this.value)">
+                            <!-- Maps populated by map load -->
+                        </select>
+                    </div>
                     
-                    <!-- Target Boss Title -->
-                    <div>
-                        <h2 id="target-name-arena" class="c-err font-black text-xl tracking-wider text-shadow">尋找目標中...</h2>
-                        <div id="target-subtitle-arena" class="text-[#fbbf24] text-[10px] mt-0.5 font-bold flex items-center justify-center gap-1">
-                            ⚔️ 搜尋魔物中...
-                        </div>
-                    </div>
-
-                    <!-- Monster Icon Face with floating damage numbers wrapper -->
-                    <div class="relative w-[84px] h-[84px] mx-auto my-2 flex items-center justify-center">
-                        <div id="target-oni-face" class="text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] animate-pulse transition-all">👹</div>
-                        <div id="damage-container" class="absolute inset-0 pointer-events-none overflow-visible"></div>
-                    </div>
-
-                    <!-- Purple HP Bar -->
-                    <div class="w-full">
-                        <div class="w-full h-[18px] bg-black border border-[#222530] rounded-full overflow-hidden relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" id="target-hp-container-arena">
-                            <div class="bar-fill" id="target-hp-bar-arena" style="width: 100%; background: linear-gradient(90deg, #7c3aed 0%, #a855f7 100%); box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);"></div>
-                            <span class="absolute inset-0 text-center text-[10px] font-extrabold leading-[18px] text-white text-shadow font-mono" id="target-hp-text-arena">0/0</span>
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-bgm-toggle" class="btn-ui !py-1 text-xs font-bold border-zinc-700 text-zinc-400" onclick="game.toggleBGM()"><i class="fas fa-volume-mute mr-1"></i>音樂: 靜音</button>
+                        <button id="btn-auto-toggle-arena" class="btn-ui !py-1 text-xs font-bold bg-red-950/60 border-red-800 text-red-200 hover:border-red-500" onclick="game.toggleAutoCombatArena()"><i class="fas fa-play mr-1"></i>開始自動</button>
+                        <button class="btn-ui !py-1 text-xs font-bold border-orange-700 text-orange-200 hover:border-yellow-500" onclick="game.playerAttack()"><i class="fas fa-sword mr-1"></i>物理攻擊</button>
+                        <button class="btn-ui !py-1 text-xs font-bold border-blue-800 text-blue-200 hover:border-blue-400" onclick="game.escapeToTown()"><i class="fas fa-sign-out-alt mr-1"></i>回村</button>
                     </div>
                 </div>
 
-                <!-- Vertical Buttons Stack on Right -->
-                <div class="flex flex-col gap-2 justify-center w-[110px]">
-                    <button id="btn-auto-toggle-arena" class="btn-ui !py-2.5 text-xs font-bold w-full bg-red-950/60 border-red-800 text-red-200 hover:border-red-500" onclick="game.toggleAutoCombatArena()"><i class="fas fa-play mr-1"></i>開始自動</button>
-                    <button class="btn-ui !py-2.5 text-xs font-bold w-full border-orange-700 text-orange-200 hover:border-yellow-500" onclick="game.playerAttack()"><i class="fas fa-sword mr-1"></i>攻擊</button>
-                    <button class="btn-ui !py-2.5 text-xs font-bold w-full border-blue-800 text-blue-200 hover:border-blue-400" onclick="game.escapeToTown()"><i class="fas fa-sign-out-alt mr-1"></i>離開</button>
+                <!-- 5 Monsters Cards Grid -->
+                <div id="battle-arena-slots" class="grid grid-cols-5 gap-3 w-full">
+                    
+                    <!-- Monster Card Slot 0 -->
+                    <div id="monster-slot-0" class="panel-border bg-slate-950/60 p-3 rounded-lg text-center flex flex-col justify-between min-h-[220px] relative border border-zinc-800 hover:border-zinc-700 transition-colors pointer-events-none">
+                        <span class="absolute top-1 right-2 text-[8px] text-zinc-600 font-bold font-mono">SLOT 1</span>
+                        <div>
+                            <h3 class="monster-name font-bold text-shadow text-xs truncate text-zinc-400">搜尋中...</h3>
+                            <div class="monster-subtitle text-[9px] text-zinc-600 font-bold">🔍 搜尋魔物中</div>
+                        </div>
+                        <div class="monster-avatar text-4xl my-2 opacity-30">🔍</div>
+                        <div class="w-full">
+                            <div class="w-full h-2.5 bg-black border border-zinc-900 rounded-full overflow-hidden relative shadow-inner">
+                                <div class="bar-fill hp-bar bg-gradient-to-r from-red-800 to-red-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="monster-hp-text text-[9px] font-mono text-zinc-500 mt-1">0/0</div>
+                        </div>
+                    </div>
+
+                    <!-- Monster Card Slot 1 -->
+                    <div id="monster-slot-1" class="panel-border bg-slate-950/60 p-3 rounded-lg text-center flex flex-col justify-between min-h-[220px] relative border border-zinc-800 hover:border-zinc-700 transition-colors pointer-events-none">
+                        <span class="absolute top-1 right-2 text-[8px] text-zinc-600 font-bold font-mono">SLOT 2</span>
+                        <div>
+                            <h3 class="monster-name font-bold text-shadow text-xs truncate text-zinc-400">搜尋中...</h3>
+                            <div class="monster-subtitle text-[9px] text-zinc-600 font-bold">🔍 搜尋魔物中</div>
+                        </div>
+                        <div class="monster-avatar text-4xl my-2 opacity-30">🔍</div>
+                        <div class="w-full">
+                            <div class="w-full h-2.5 bg-black border border-zinc-900 rounded-full overflow-hidden relative shadow-inner">
+                                <div class="bar-fill hp-bar bg-gradient-to-r from-red-800 to-red-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="monster-hp-text text-[9px] font-mono text-zinc-500 mt-1">0/0</div>
+                        </div>
+                    </div>
+
+                    <!-- Monster Card Slot 2 -->
+                    <div id="monster-slot-2" class="panel-border bg-slate-950/60 p-3 rounded-lg text-center flex flex-col justify-between min-h-[220px] relative border border-zinc-800 hover:border-zinc-700 transition-colors pointer-events-none">
+                        <span class="absolute top-1 right-2 text-[8px] text-zinc-600 font-bold font-mono">SLOT 3</span>
+                        <div>
+                            <h3 class="monster-name font-bold text-shadow text-xs truncate text-zinc-400">搜尋中...</h3>
+                            <div class="monster-subtitle text-[9px] text-zinc-600 font-bold">🔍 搜尋魔物中</div>
+                        </div>
+                        <div class="monster-avatar text-4xl my-2 opacity-30">🔍</div>
+                        <div class="w-full">
+                            <div class="w-full h-2.5 bg-black border border-zinc-900 rounded-full overflow-hidden relative shadow-inner">
+                                <div class="bar-fill hp-bar bg-gradient-to-r from-red-800 to-red-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="monster-hp-text text-[9px] font-mono text-zinc-500 mt-1">0/0</div>
+                        </div>
+                    </div>
+
+                    <!-- Monster Card Slot 3 -->
+                    <div id="monster-slot-3" class="panel-border bg-slate-950/60 p-3 rounded-lg text-center flex flex-col justify-between min-h-[220px] relative border border-zinc-800 hover:border-zinc-700 transition-colors pointer-events-none">
+                        <span class="absolute top-1 right-2 text-[8px] text-zinc-600 font-bold font-mono">SLOT 4</span>
+                        <div>
+                            <h3 class="monster-name font-bold text-shadow text-xs truncate text-zinc-400">搜尋中...</h3>
+                            <div class="monster-subtitle text-[9px] text-zinc-600 font-bold">🔍 搜尋魔物中</div>
+                        </div>
+                        <div class="monster-avatar text-4xl my-2 opacity-30">🔍</div>
+                        <div class="w-full">
+                            <div class="w-full h-2.5 bg-black border border-zinc-900 rounded-full overflow-hidden relative shadow-inner">
+                                <div class="bar-fill hp-bar bg-gradient-to-r from-red-800 to-red-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="monster-hp-text text-[9px] font-mono text-zinc-500 mt-1">0/0</div>
+                        </div>
+                    </div>
+
+                    <!-- Monster Card Slot 4 -->
+                    <div id="monster-slot-4" class="panel-border bg-slate-950/60 p-3 rounded-lg text-center flex flex-col justify-between min-h-[220px] relative border border-zinc-800 hover:border-zinc-700 transition-colors pointer-events-none">
+                        <span class="absolute top-1 right-2 text-[8px] text-zinc-600 font-bold font-mono">SLOT 5</span>
+                        <div>
+                            <h3 class="monster-name font-bold text-shadow text-xs truncate text-zinc-400">搜尋中...</h3>
+                            <div class="monster-subtitle text-[9px] text-zinc-600 font-bold">🔍 搜尋魔物中</div>
+                        </div>
+                        <div class="monster-avatar text-4xl my-2 opacity-30">🔍</div>
+                        <div class="w-full">
+                            <div class="w-full h-2.5 bg-black border border-zinc-900 rounded-full overflow-hidden relative shadow-inner">
+                                <div class="bar-fill hp-bar bg-gradient-to-r from-red-800 to-red-500" style="width: 0%;"></div>
+                            </div>
+                            <div class="monster-hp-text text-[9px] font-mono text-zinc-500 mt-1">0/0</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
             <!-- Character Info Window -->
-            <div id="win-status" class="game-window hidden absolute left-[20px] top-[20px] w-[330px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-status" class="game-window hidden absolute w-[330px] h-[550px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-user-shield mr-1.5"></i>角色狀態</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-user-shield mr-1.5"></i>角色狀態 (<span id="win-status-class-title">王族</span>)</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-status'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll text-sm">
@@ -123,17 +257,19 @@
                         <div class="flex items-center justify-between">經驗 (EXP): <div class="bar-container flex-1 max-w-[160px]"><div class="bar-fill exp" id="win-exp-bar" style="width: 0%;"></div><span class="bar-text" id="win-exp-text">0.00%</span></div></div>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-3 mt-6 border-t border-gray-800 pt-4 text-xs">
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">力量 (STR): <span id="win-str" class="font-bold text-white">8</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">防禦 (AC): <span id="win-ac" class="c-info font-bold">10</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">敏捷 (DEX): <span id="win-dex" class="font-bold text-white">8</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">魔防 (MR): <span id="win-mr" class="c-magic font-bold">0%</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">體質 (CON): <span id="win-con" class="font-bold text-white">8</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">迴避 (ER): <span id="win-er" class="font-bold text-white">0</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">智力 (INT): <span id="win-int" class="font-bold text-white">8</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">額外傷害: <span id="win-dmg" class="font-bold text-white">0</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">精神 (WIS): <span id="win-wis" class="font-bold text-white">8</span></div>
-                        <div class="flex justify-between border-b border-zinc-900 pb-1">額外命中: <span id="win-hit" class="font-bold text-white">0</span></div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 mt-5 border-t border-gray-800 pt-4 text-[11px]">
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">力量 (STR): <span id="win-str" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">防禦 (AC): <span id="win-ac" class="c-info font-bold">10</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">敏捷 (DEX): <span id="win-dex" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">魔防 (MR): <span id="win-mr" class="c-magic font-bold">0%</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">體質 (CON): <span id="win-con" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">迴避 (ER): <span id="win-er" class="font-bold text-white">0</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">智力 (INT): <span id="win-int" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">物理暴擊: <span id="win-crit" class="font-bold text-white">0%</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">精神 (WIS): <span id="win-wis" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">額外傷害: <span id="win-dmg" class="font-bold text-white">0</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">魅力 (CHA): <span id="win-cha" class="font-bold text-white">8</span></div>
+                        <div class="flex justify-between border-b border-zinc-900 pb-0.5">額外命中: <span id="win-hit" class="font-bold text-white">0</span></div>
                     </div>
                     
                     <div class="mt-5 border-t border-gray-800 pt-4 flex items-center justify-between text-base">
@@ -148,9 +284,12 @@
             </div>
 
             <!-- Equipped & Bag Inventory Window -->
-            <div id="win-inventory" class="game-window hidden absolute left-[360px] top-[20px] w-[560px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-inventory" class="game-window hidden absolute w-[560px] h-[500px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-suitcase mr-1.5"></i>裝備與背包</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-suitcase mr-1.5"></i>裝備與背包</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-inventory'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="window-body p-3 flex-1 flex gap-3 min-h-0">
@@ -168,9 +307,12 @@
             </div>
 
             <!-- Spells Window -->
-            <div id="win-spells" class="game-window hidden absolute right-[360px] top-[20px] w-[340px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-spells" class="game-window hidden absolute w-[340px] h-[480px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-book mr-1.5"></i>已學習魔法</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-book mr-1.5"></i>已學習魔法</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-spells'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll flex flex-col justify-between">
@@ -183,9 +325,12 @@
             </div>
 
             <!-- Shop & Settings Window -->
-            <div id="win-shop" class="game-window hidden absolute right-[20px] top-[20px] w-[380px] bottom-[20px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-shop" class="game-window hidden absolute w-[380px] h-[550px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-store mr-1.5"></i>商店與設定</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-store mr-1.5"></i>商店與設定</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-shop'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll pr-1 text-xs">
@@ -244,19 +389,27 @@
                         </div>
                     </div>
                     
-                    <!-- Game Archive System -->
-                    <div class="c-title mb-2.5 border-b border-gray-800 pb-1.5 text-sm font-bold"><i class="fas fa-save mr-1"></i>系統存檔</div>
-                    <div class="flex gap-3 bg-black/20 p-2.5 rounded border border-zinc-900">
-                         <button class="btn-ui flex-1 py-1.5 c-success border-green-800 hover:bg-green-950/80 !text-xs font-bold" onclick="game.saveGame()"><i class="fas fa-save mr-1"></i>儲存進度</button>
-                         <button class="btn-ui flex-1 py-1.5 c-err border-red-800 hover:bg-red-950/80 !text-xs font-bold" onclick="game.deleteSave()"><i class="fas fa-trash-alt mr-1"></i>刪除存檔</button>
+                    <!-- Game Archive System (Upgraded for Save Export/Import in Version 3) -->
+                    <div class="c-title mb-2.5 border-b border-gray-800 pb-1.5 text-sm font-bold"><i class="fas fa-save mr-1"></i>系統與檔案存檔</div>
+                    <input type="file" id="import-save-file" onchange="game.importSave(event)" accept=".json" class="hidden">
+                    <div class="grid grid-cols-2 gap-2 mb-2 bg-black/20 p-2.5 rounded border border-zinc-900">
+                         <button class="btn-ui py-1.5 c-success border-green-800 hover:bg-green-950/80 !text-xs font-bold" onclick="game.saveGame()"><i class="fas fa-save mr-1"></i>儲存本機</button>
+                         <button class="btn-ui py-1.5 c-err border-red-800 hover:bg-red-950/80 !text-xs font-bold" onclick="game.deleteSave()"><i class="fas fa-trash-alt mr-1"></i>刪除本機</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 bg-black/20 p-2.5 rounded border border-zinc-900">
+                         <button class="btn-ui py-1.5 c-info border-blue-800 hover:bg-blue-950/80 !text-xs font-bold" onclick="game.exportSave()"><i class="fas fa-file-download mr-1"></i>匯出下載</button>
+                         <button class="btn-ui py-1.5 c-warn border-yellow-850 hover:bg-yellow-950/80 !text-xs font-bold" onclick="document.getElementById('import-save-file').click()"><i class="fas fa-file-upload mr-1"></i>匯入上傳</button>
                     </div>
                 </div>
             </div>
 
             <!-- Map Window -->
-            <div id="win-map" class="game-window hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] flex flex-col z-20" onclick="game.bringToFront(this)">
+            <div id="win-map" class="game-window hidden absolute w-[320px] h-[175px] flex flex-col z-20" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-map-marked-alt mr-1.5"></i>地圖與瞬移</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-map-marked-alt mr-1.5"></i>地圖與瞬移</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-map'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="window-body p-4 text-center">
@@ -267,10 +420,29 @@
                 </div>
             </div>
 
-            <!-- Logs Window -->
-            <div id="win-logs" class="game-window hidden absolute left-[20px] bottom-[20px] w-[460px] h-[340px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <!-- 強化裝備視窗 -->
+            <div id="enchant-modal" class="game-window hidden absolute w-[380px] h-[360px] flex flex-col z-40" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-history mr-1.5"></i>系統日誌與戰鬥資訊</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-scroll mr-1.5"></i>強化裝備</span>
+                    </div>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.closeEnchantModal(); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-4 flex-1 overflow-y-auto custom-scroll text-sm">
+                    <div class="c-sys mb-4 text-xs">請選擇要用來強化 <span id="enchant-target-name" class="font-bold text-base text-white"></span> 的卷軸：</div>
+                    <div id="enchant-scroll-list" class="space-y-2 mb-4 max-h-[160px] overflow-y-auto custom-scroll pr-2 text-xs"></div>
+                    <div class="text-right border-t border-gray-800 pt-3"><button class="btn-ui py-1.5 px-5 text-xs" onclick="game.closeEnchantModal()">取消</button></div>
+                </div>
+            </div>
+
+            <!-- Logs Window -->
+            <div id="win-logs" class="game-window hidden absolute w-[460px] h-[340px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-history mr-1.5"></i>系統日誌與戰鬥資訊</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-logs'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="flex border-b border-zinc-800 text-xs select-none">
@@ -284,9 +456,12 @@
             </div>
 
             <!-- Player Discussion Forum Window -->
-            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[500px] h-[600px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-forum" class="game-window hidden absolute w-[500px] h-[600px] max-h-[85vh] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
-                    <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-comments mr-1.5"></i>玩家討論區</span>
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳右下角)"></i>
+                        <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-comments mr-1.5"></i>玩家討論區</span>
+                    </div>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-forum'); event.stopPropagation();"><i class="fas fa-times"></i></button>
                 </div>
                 <!-- Forum Navigation/Tags -->
@@ -354,9 +529,10 @@
         <div class="bottom-dashboard flex items-center justify-between px-4 py-2 border-t-2 border-[#5c4e37] bg-gradient-to-b from-[#161922] to-[#0d0f14] fixed bottom-0 left-0 right-0 h-[145px] z-30 select-none shadow-[0_-5px_25px_rgba(0,0,0,0.9)]">
             <!-- Left Section: Status -->
             <div class="w-[200px] h-[125px] flex flex-col justify-between bg-black/40 border border-[#2a2c35] rounded p-1.5 text-sm">
-                <div class="flex justify-between items-center bg-[#1c1d22] px-2 py-0.5 rounded border border-[#3e404b]">
-                    <span class="text-[#f59e0b] font-bold text-xs uppercase">Lv.<span id="ui-level-bottom">1</span></span>
-                    <span id="ui-exp-bottom" class="text-white font-mono text-[11px]">0.00%</span>
+                <div class="flex justify-between items-center bg-[#1c1d22] px-2 py-0.5 rounded border border-[#3e404b] relative overflow-hidden">
+                    <div id="ui-exp-bar-bottom" class="absolute top-0 left-0 bottom-0 bg-emerald-600/30 transition-all duration-300" style="width: 0%;"></div>
+                    <span class="text-[#f59e0b] font-bold text-xs uppercase z-10">Lv.<span id="ui-level-bottom">1</span></span>
+                    <span id="ui-exp-bottom" class="text-white font-mono text-[11px] z-10">0.00%</span>
                 </div>
                 <div class="grid grid-cols-2 gap-1 mt-1 text-xs">
                     <div class="flex items-center gap-1.5 bg-[#14151a] px-2 py-1 rounded border border-[#23242c]">
@@ -476,6 +652,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Background Music Audio Player -->
+    <audio id="bgm-player" loop src="assets/audio/天堂演奏曲 - Limei Gu (youtube).mp3"></audio>
 
     <!-- Sequential script loading in dependency order -->
     <script src="js/engine.js"></script>

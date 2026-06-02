@@ -8,9 +8,19 @@ for(let i=49; i<=90; i++) window.EXP_TABLE[i] = 36065092;
 
 window.game = window.game || {};
 
+window.CLASS_BASES = {
+    prince: { hp: 60, mp: 20, str: 13, dex: 10, con: 12, int: 11, wis: 11, cha: 13, hpGain: 8, mpGain: 2, crit: 5 },
+    knight: { hp: 80, mp: 10, str: 16, dex: 12, con: 14, int: 8, wis: 9, cha: 12, hpGain: 12, mpGain: 1, crit: 5 },
+    elf: { hp: 55, mp: 30, str: 11, dex: 15, con: 12, int: 12, wis: 12, cha: 9, hpGain: 6, mpGain: 3, crit: 10 },
+    mage: { hp: 40, mp: 60, str: 8, dex: 7, con: 12, int: 18, wis: 15, cha: 8, hpGain: 4, mpGain: 6, crit: 0 },
+    dark_elf: { hp: 65, mp: 25, str: 12, dex: 15, con: 10, int: 11, wis: 10, cha: 9, hpGain: 7, mpGain: 2, crit: 20 },
+    dragon_knight: { hp: 75, mp: 15, str: 15, dex: 11, con: 14, int: 9, wis: 8, cha: 8, hpGain: 10, mpGain: 1, crit: 8 },
+    illusionist: { hp: 50, mp: 50, str: 8, dex: 10, con: 11, int: 16, wis: 13, cha: 10, hpGain: 5, mpGain: 4, crit: 5 }
+};
+
 // Stat computation functions
 window.game.getEffStat = function(stat) {
-    let val = window.game.state.baseStats[stat];
+    let val = window.game.state.baseStats[stat] || 8;
     
     // Amulet slot modifiers
     let amuKey = window.game.state.equipment.amulet;
@@ -60,7 +70,17 @@ window.game.getSetBonuses = function() {
 window.game.calculateMaxHpMp = function() {
     let effCon = window.game.getEffStat('con');
     let conBonus = effCon <= 15 ? 0 : effCon - 15;
-    let calcMaxHp = 12 + (window.game.state.level * (6 + conBonus));
+    let cls = window.game.state.class || 'prince';
+    let bases = window.CLASS_BASES[cls] || window.CLASS_BASES.prince;
+
+    // HP formula: ClassBaseHP + (CON * 5) + (level - 1) * (ClassHpGain + conBonus)
+    let calcMaxHp = bases.hp + (effCon * 5) + (window.game.state.level - 1) * (bases.hpGain + conBonus);
+    
+    // Knight HP +30% modifier
+    if (cls === 'knight') {
+        calcMaxHp = Math.floor(calcMaxHp * 1.3);
+    }
+
     let beltKey = window.game.state.equipment.belt;
     if (beltKey && window.game.state.inventory[beltKey]) {
         let beltName = window.ITEMS[window.game.state.inventory[beltKey].itemId].name;
@@ -72,6 +92,7 @@ window.game.calculateMaxHpMp = function() {
     window.game.state.maxHp = calcMaxHp;
     
     let effWis = window.game.getEffStat('wis');
+    let effInt = window.game.getEffStat('int');
     let wisBonus = -1;
     if(effWis >= 11 && effWis <= 13) wisBonus = 0;
     if(effWis >= 12 && effWis <= 13) wisBonus = 1;
@@ -80,7 +101,8 @@ window.game.calculateMaxHpMp = function() {
     if(effWis === 18) wisBonus = 4;
     if(effWis > 18) wisBonus = 4 + (effWis - 18);
     
-    let calcMaxMp = 10 + (window.game.state.level * (6 + wisBonus));
+    // MP formula: ClassBaseMP + (INT * 3) + (WIS * 2) + (level - 1) * (ClassMpGain + wisBonus)
+    let calcMaxMp = bases.mp + (effInt * 3) + (effWis * 2) + (window.game.state.level - 1) * (bases.mpGain + wisBonus);
     if (beltKey && window.game.state.inventory[beltKey]) {
         let beltName = window.ITEMS[window.game.state.inventory[beltKey].itemId].name;
         if (beltName === '精神腰帶') calcMaxMp += 50;
@@ -99,7 +121,7 @@ window.game.calculateMaxHpMp = function() {
 window.game.getAC = function() {
     let ac = 10;
     ac -= Math.floor(window.game.state.level / 8);
-    let dex = window.game.state.baseStats.dex + (window.game.state.buffs.dex_buff ? 5 : 0);
+    let dex = window.game.getEffStat('dex') + (window.game.state.buffs.dex_buff ? 5 : 0);
     let div = dex < 10 ? 8 : dex < 13 ? 7 : dex < 16 ? 6 : dex < 18 ? 5 : 4;
     ac -= Math.floor(dex / div);
     for(let slot in window.game.state.equipment) {
@@ -156,7 +178,7 @@ window.game.getStrBonus = function() {
 };
 
 window.game.getDexBonus = function() {
-    let dex = window.game.state.baseStats.dex + (window.game.state.buffs.dex_buff ? 5 : 0);
+    let dex = window.game.getEffStat('dex') + (window.game.state.buffs.dex_buff ? 5 : 0);
     let hit = 0, er = 0;
     if(dex===8) { hit=-1; er=0; }
     else if(dex===9) { hit=0; er=0; }
@@ -164,7 +186,6 @@ window.game.getDexBonus = function() {
     else if(dex===11) { hit=1; er=1; }
     else if(dex===12) { hit=1; er=2; }
     else if(dex===13) { hit=2; er=2; }
-    else if(window.game.getEffStat('dex')===14) { hit=2; er=3; } // backward compatibility or safe check
     else if(dex===14) { hit=2; er=3; }
     else if(dex===15) { hit=3; er=3; }
     else if(dex===16) { hit=3; er=4; }
@@ -194,7 +215,18 @@ window.game.getMeleeHit = function() {
 };
 
 window.game.getMeleeDmg = function() {
-    let strBonus = window.game.getStrBonus().dmg;
+    let cls = window.game.state.class || 'prince';
+    let statBonus = 0;
+    
+    // Ranged Elf DEX-scaling, other classes Melee STR-scaling
+    if (cls === 'elf') {
+        let effDex = window.game.getEffStat('dex') + (window.game.state.buffs.dex_buff ? 5 : 0);
+        statBonus = Math.floor(effDex * 1.5);
+    } else {
+        let effStr = window.game.getEffStat('str') + (window.game.state.buffs.str_buff ? 5 : 0);
+        statBonus = Math.floor(effStr * 1.5);
+    }
+    
     let wpnDmg = 0;
     let wKey = window.game.state.equipment.weapon;
     if(wKey && window.game.state.inventory[wKey]) {
@@ -206,19 +238,16 @@ window.game.getMeleeDmg = function() {
     if (window.game.state.buffs.berserkers) wpnDmg += 5;
     if (window.game.state.buffs.player_weapon_break > 0) wpnDmg -= 10;
     let sets = window.game.getSetBonuses();
-    return strBonus + wpnDmg + sets.dmg;
+    return statBonus + wpnDmg + sets.dmg;
 };
 
 window.game.getMagicDmg = function() {
-    let int = window.game.state.baseStats.int;
-    let m = 0;
-    if(int===8) m=-1; 
-    else if(int>=9&&int<=11) m=0; 
-    else if(int>=12&&int<=14) m=1; 
-    else if(int===15) m=1;
-    else if(int>=16&&int<=17) m=2; 
-    else if(int===18) m=3; 
-    else if(int>18) m=3+(int-18);
+    let cls = window.game.state.class || 'prince';
+    let multiplier = (cls === 'mage') ? 2 : 1; // Mage has +100% Spell Dmg
+    let effInt = window.game.getEffStat('int');
+    
+    // Magic Dmg formula: multiplier * INT * 2
+    let m = Math.floor(multiplier * effInt * 2);
     
     let wKey = window.game.state.equipment.weapon;
     if(wKey && window.game.state.inventory[wKey]) {

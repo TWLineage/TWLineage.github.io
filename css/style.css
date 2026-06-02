@@ -323,6 +323,9 @@ h1, h2, h3, .c-title, #target-name-arena, #ui-level {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    resize: both;
+    min-width: 250px;
+    min-height: 150px;
 }
 
 .window-header {
@@ -364,3 +367,39 @@ h1, h2, h3, .c-title, #target-name-arena, #ui-level {
 .damage-monster { color: #ef4444; } /* monster dealt damage (red) */
 .damage-heal { color: #10b981; } /* player healed (green) */
 .damage-magic { color: #38bdf8; } /* magic cast / spell dmg (cyan) */
+
+/* Class Selection Active Style */
+.class-sel-btn.active, .gender-sel-btn.active {
+    background: linear-gradient(180deg, #3b2a1a 0%, #20170a 100%) !important;
+    border-color: #fbbf24 !important;
+    color: #fbbf24 !important;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.5) !important;
+}
+
+/* Monster Cards - Active and Selected States */
+.monster-slot-active {
+    border-color: #dc2626 !important;
+    background-color: rgba(15, 7, 7, 0.75) !important;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.3) !important;
+    pointer-events: auto !important;
+    cursor: pointer;
+}
+.monster-slot-active:hover {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.45) !important;
+}
+.monster-slot-selected {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.5) !important;
+}
+.monster-slot-active .monster-avatar {
+    opacity: 1 !important;
+    animation: monster-idle-pulse 2s infinite ease-in-out;
+}
+
+@keyframes monster-idle-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+

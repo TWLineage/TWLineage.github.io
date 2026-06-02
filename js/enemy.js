@@ -1,10 +1,11 @@
 // 魔物與地圖管理器 (v0.2.3)
 window.game = window.game || {};
 
-window.game.calcMagicDmgToMonster = function(base) {
-    let targetMR = window.game.state.targetMonster.mr || 0;
+window.game.calcMagicDmgToMonster = function(base, m) {
+    if (!m) return base;
+    let targetMR = m.mr || 0;
     let d = Math.max(1, Math.floor(base * (100 - targetMR) / 100));
-    let tid = window.game.state.targetMonster.id;
+    let tid = m.id;
     if (tid === 'antaras') d = Math.max(1, Math.floor(d * 0.1));
     if (tid === 'wyrm' || tid === 'death_knight') d = Math.max(1, Math.floor(d * 0.5));
     if (tid === 'black_elder') d = Math.max(1, Math.floor(d * 0.4));
@@ -23,29 +24,29 @@ window.game.changeMap = function(mapId) {
     if (mapId === 'antaras_lair' && window.game.state.antarasDeadUntil && Date.now() < window.game.state.antarasDeadUntil) {
         window.game.stopBattle();
         window.game.state.currentMap = mapId;
-        if (document.getElementById('target-name-arena')) {
-            document.getElementById('target-name-arena').innerText = `安塔瑞斯尚未重生... (${Math.ceil((window.game.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
-            document.getElementById('target-name-arena').className = 'c-warn font-bold text-xl tracking-wider text-shadow';
-        }
-        if (document.getElementById('target-hp-container-arena')) {
-            document.getElementById('target-hp-container-arena').classList.add('hidden');
-        }
         window.game.logSystem(`移動到了 ${window.MAPS[mapId].name}。但安塔瑞斯尚未重生。`);
+        
+        let mapSel = document.getElementById('win-map-select');
+        if (mapSel) mapSel.value = mapId;
+        let arenaSel = document.getElementById('win-arena-map-select');
+        if (arenaSel) arenaSel.value = mapId;
+        
         setTimeout(() => { if(window.game.state.isPlaying && window.game.state.currentMap === 'antaras_lair') window.game.spawnMonster(); }, 5000);
         return;
     }
 
     window.game.state.currentMap = mapId;
     window.game.logSystem(`移動到了 ${window.MAPS[mapId].name}。`);
+    
+    let mapSel = document.getElementById('win-map-select');
+    if (mapSel) mapSel.value = mapId;
+    let arenaSel = document.getElementById('win-arena-map-select');
+    if (arenaSel) arenaSel.value = mapId;
+
     window.game.stopBattle();
+    window.game.state.targetMonsters = [null, null, null, null, null];
     window.game.state.targetMonster = null;
-    if (document.getElementById('target-name-arena')) {
-        document.getElementById('target-name-arena').innerText = '尋找目標中...';
-        document.getElementById('target-name-arena').className = 'c-err font-black text-xl tracking-wider text-shadow';
-    }
-    if (document.getElementById('target-hp-container-arena')) {
-        document.getElementById('target-hp-container-arena').classList.add('hidden');
-    }
+    window.game.state.selectedTargetIndex = 0;
     setTimeout(() => window.game.startBattle(), 1000);
 };
 
@@ -53,13 +54,6 @@ window.game.spawnMonster = function() {
     if(window.game.state.hp <= 0) return;
     
     if (window.game.state.currentMap === 'antaras_lair' && window.game.state.antarasDeadUntil && Date.now() < window.game.state.antarasDeadUntil) {
-        if (document.getElementById('target-name-arena')) {
-            document.getElementById('target-name-arena').innerText = `安塔瑞斯尚未重生... (${Math.ceil((window.game.state.antarasDeadUntil - Date.now()) / 1000)}秒)`;
-            document.getElementById('target-name-arena').className = 'c-warn font-bold text-xl tracking-wider text-shadow';
-        }
-        if (document.getElementById('target-hp-container-arena')) {
-            document.getElementById('target-hp-container-arena').classList.add('hidden');
-        }
         setTimeout(() => { if(window.game.state.isPlaying && window.game.state.currentMap === 'antaras_lair') window.game.spawnMonster(); }, 5000);
         return;
     }
@@ -74,71 +68,94 @@ window.game.spawnMonster = function() {
         return window.game.spawnMonster();
     }
 
-    let totalW = map.monsters.reduce((s, m) => s + m.weight, 0);
-    let r = Math.random() * totalW;
-    let selected = map.monsters[0];
-    for(let m of map.monsters) { if(r < m.weight) { selected = m; break; } r -= m.weight; }
+    // Identify empty slots
+    let emptyIndices = [];
+    for (let i = 0; i < 5; i++) {
+        if (!window.game.state.targetMonsters[i]) emptyIndices.push(i);
+    }
+    if (emptyIndices.length === 0) return;
+
+    // Roll count of monsters to spawn: random between 1 and 5, capped at emptyIndices.length
+    let spawnCount = Math.floor(Math.random() * 5) + 1;
+    spawnCount = Math.min(spawnCount, emptyIndices.length);
+
+    for (let k = 0; k < spawnCount; k++) {
+        let totalW = map.monsters.reduce((s, m) => s + m.weight, 0);
+        let r = Math.random() * totalW;
+        let selected = map.monsters[0];
+        for(let m of map.monsters) { if(r < m.weight) { selected = m; break; } r -= m.weight; }
+        
+        let slotIdx = emptyIndices.splice(Math.floor(Math.random() * emptyIndices.length), 1)[0];
+        
+        let monsterObj = { 
+            ...selected, 
+            maxHp: selected.hp, 
+            hp: selected.hp, 
+            debuffs: {},
+            atkCd: selected.atkSpeed || 2000
+        };
+        
+        window.game.state.targetMonsters[slotIdx] = monsterObj;
+        
+        if (window.game.state.selectedTargetIndex === null || !window.game.state.targetMonsters[window.game.state.selectedTargetIndex]) {
+            window.game.state.selectedTargetIndex = slotIdx;
+            window.game.state.targetMonster = monsterObj; // fallback
+        }
+        
+        let availSpells = window.game.getAvailableSpells();
+        if (selected.name === '史巴托' && availSpells.includes('detection') && window.game.state.level >= window.SPELLS['detection'].level * 4) {
+            monsterObj.debuffs.sleep = 5;
+            window.game.logCombat(`【無所遁形術】看破了 [Slot ${slotIdx + 1}] 史巴托的潛伏，使其停止行動 5 秒。`, 'info');
+        }
+    }
     
-    window.game.state.targetMonster = { ...selected, maxHp: selected.hp, debuffs: {} };
     window.game.state.zombieTick = 0;
     window.game.state.monsterSpecialTick = 0;
     
-    let availSpells = window.game.getAvailableSpells();
-    if (selected.name === '史巴托' && availSpells.includes('detection') && window.game.state.level >= window.SPELLS['detection'].level * 4) {
-        window.game.state.targetMonster.debuffs.sleep = 5;
-        window.game.logCombat(`【無所遁形術】看破了史巴托的潛伏，使其停止行動 5 秒。`, 'info');
-    }
-    
     window.game.updateUI();
-    if (document.getElementById('target-hp-container-arena')) {
-        document.getElementById('target-hp-container-arena').classList.remove('hidden');
-    }
-    window.game.updateMonsterHpBar();
 };
 
 window.game.updateMonsterHpBar = function() {
-    if(!window.game.state.targetMonster) return;
-    if (document.getElementById('target-hp-bar-arena')) {
-        document.getElementById('target-hp-bar-arena').style.width = `${Math.max(0, (window.game.state.targetMonster.hp/window.game.state.targetMonster.maxHp)*100)}%`;
-    }
+    window.game.updateMonsterSlotsUI();
 };
 
-window.game.monsterAttack = function() {
-    if(!window.game.state.targetMonster || window.game.state.hp <= 0) return;
+window.game.monsterAttack = function(index) {
+    let m = window.game.state.targetMonsters[index];
+    if(!m || window.game.state.hp <= 0) return;
     
-    if (window.game.state.buffs.tame_monster && !window.game.state.targetMonster.isBoss) {
-        if (Math.random() < (1 / window.game.state.targetMonster.level)) {
-            let p = window.game.state.targetMonster.dice.split('+');
+    if (window.game.state.buffs.tame_monster && !m.isBoss) {
+        if (Math.random() < (1 / m.level)) {
+            let p = m.dice.split('+');
             let selfDmg = window.rollDice(p[0]) + (p[1] ? parseInt(p[1]) : 0);
-            window.game.state.targetMonster.hp -= selfDmg;
-            window.game.logCombat(`${window.game.state.targetMonster.name} 被迷魅，攻擊了自己造成 ${selfDmg} 點傷害！`, 'success');
+            m.hp -= selfDmg;
+            window.game.logCombat(`[Slot ${index + 1}] ${m.name} 被迷魅，攻擊了自己造成 ${selfDmg} 點傷害！`, 'success');
             window.game.updateMonsterHpBar();
-            if(window.game.state.targetMonster.hp <= 0) window.game.monsterDied();
+            if(m.hp <= 0) window.game.monsterDied(index);
             return;
         }
     }
     
     if(Math.random()*100 <= window.game.getER()) {
-        window.game.logCombat(`你閃避了 ${window.game.state.targetMonster.name} 的攻擊！`, 'success');
+        window.game.logCombat(`你閃避了 [Slot ${index + 1}] ${m.name} 的攻擊！`, 'success');
         return;
     }
     
     let roll = window.rollDice('1d20');
     let isHit = false; let isCrit = false;
-    let dbf = window.game.state.targetMonster.debuffs || {};
+    let dbf = m.debuffs || {};
     let darknessPenalty = (dbf.darkness > 0) ? -5 : 0;
     let diseasePenalty = (dbf.disease > 0) ? -4 : 0;
     
-    let monsterLvl = window.game.state.targetMonster.level;
+    let monsterLvl = m.level;
     let extraHit = Math.floor(monsterLvl / 2) + Math.floor(monsterLvl / 10) * 2;
-    if (window.game.state.targetMonster.hitBonus) extraHit += window.game.state.targetMonster.hitBonus;
+    if (m.hitBonus) extraHit += m.hitBonus;
     
     if(roll === 1) isHit = false;
     else if(roll === 20) { isHit = true; isCrit = true; }
-    else if(roll + extraHit + darknessPenalty + diseasePenalty + (window.game.state.targetMonster.level - window.game.state.level) >= 10 - window.game.getAC()) isHit = true;
+    else if(roll + extraHit + darknessPenalty + diseasePenalty + (m.level - window.game.state.level) >= 10 - window.game.getAC()) isHit = true;
     
     if(isHit) {
-        let parts = window.game.state.targetMonster.dice.split('+');
+        let parts = m.dice.split('+');
         let dDmg = isCrit ? parseInt(parts[0].split('d')[1]) : window.rollDice(parts[0]);
         let baseD = parts[1] ? parseInt(parts[1]) : 0;
         if (dbf.weapon_break > 0) baseD -= 10;
@@ -148,47 +165,64 @@ window.game.monsterAttack = function() {
         if (window.game.state.buffs.immune_to_harm) dmg = Math.max(1, Math.floor(dmg * 0.7));
         
         window.game.state.hp -= dmg;
-        window.game.logCombat(`${window.game.state.targetMonster.name} 命中了你，造成 ${dmg} 點傷害。`, 'danger');
+        window.game.logCombat(`[Slot ${index + 1}] ${m.name} 命中了你，造成 ${dmg} 點傷害。`, 'danger');
         window.game.updateUI();
         
         window.game.checkPlayerDeath();
     } else {
-        window.game.logCombat(`${window.game.state.targetMonster.name} 的攻擊未命中。`);
+        window.game.logCombat(`[Slot ${index + 1}] ${m.name} 的攻擊未命中。`);
     }
 };
 
-window.game.monsterDied = function() {
-    let m = window.game.state.targetMonster;
-    window.game.state.exp += m.exp * window.RateXp;
+window.game.monsterDied = function(index) {
+    let m = window.game.state.targetMonsters[index];
+    if (!m) return;
+    
+    // Prince gets +10% EXP
+    let expReward = m.exp * window.RateXp;
+    if (window.game.state.class === 'prince') {
+        expReward = Math.floor(expReward * 1.1);
+    }
+    window.game.state.exp += expReward;
     
     let multi = m.isBoss ? 10 : 1;
     let goldMsg = '';
     if (Math.random() < 0.70) {
+        // Prince gets +20% Gold
         let adena = (m.adena[0] + Math.floor(Math.random()*(m.adena[1]-m.adena[0]+1))) * window.RateDropAdena;
+        if (window.game.state.class === 'prince') {
+            adena = Math.floor(adena * 1.2);
+        }
         window.game.state.adena += adena;
         if (adena > 0) goldMsg = `獲得 ${adena} 金幣。`;
     }
     
-    if (goldMsg) window.game.logSystem(`擊敗了 ${m.name}。${goldMsg}`);
-    else window.game.logSystem(`擊敗了 ${m.name}。`);
+    if (goldMsg) window.game.logSystem(`擊敗了 [Slot ${index + 1}] ${m.name}。${goldMsg}`);
+    else window.game.logSystem(`擊敗了 [Slot ${index + 1}] ${m.name}。`);
     
     let lv = m.level;
+    let dropChanceMultiplier = 1.0;
+    
+    // Elf gets +10% drop chance
+    if (window.game.state.class === 'elf') {
+        dropChanceMultiplier = 1.1;
+    }
     
     if (lv >= 11) {
-        if(Math.random()*100 < 0.5 * multi * window.RateDropItems) { window.game.addInventory('scroll_armor',1,0,false); window.game.logSystem(`${m.name} 給你 對盔甲施法的卷軸。`, 'reward'); }
-        if(Math.random()*100 < 0.01 * multi * window.RateDropItems) { window.game.addInventory('scroll_armor_blessed',1,0,false); window.game.logSystem(`${m.name} 給你 受祝福的 對盔甲施法的卷軸。`, 'blessed'); }
+        if(Math.random()*100 < 0.5 * multi * window.RateDropItems * dropChanceMultiplier) { window.game.addInventory('scroll_armor',1,0,false); window.game.logSystem(`${m.name} 給你 對盔甲施法的卷軸。`, 'reward'); }
+        if(Math.random()*100 < 0.01 * multi * window.RateDropItems * dropChanceMultiplier) { window.game.addInventory('scroll_armor_blessed',1,0,false); window.game.logSystem(`${m.name} 給你 受祝福的 對盔甲施法的卷軸。`, 'blessed'); }
     }
     if (lv >= 21) {
-        if(Math.random()*100 < 0.5 * multi * window.RateDropItems) { window.game.addInventory('scroll_weapon',1,0,false); window.game.logSystem(`${m.name} 給你 對武器施法的卷軸。`, 'reward'); }
-        if(Math.random()*100 < 0.01 * multi * window.RateDropItems) { window.game.addInventory('scroll_weapon_blessed',1,0,false); window.game.logSystem(`${m.name} 給你 受祝福的 對武器施法的卷軸。`, 'blessed'); }
+        if(Math.random()*100 < 0.5 * multi * window.RateDropItems * dropChanceMultiplier) { window.game.addInventory('scroll_weapon',1,0,false); window.game.logSystem(`${m.name} 給你 對武器施法的卷軸。`, 'reward'); }
+        if(Math.random()*100 < 0.01 * multi * window.RateDropItems * dropChanceMultiplier) { window.game.addInventory('scroll_weapon_blessed',1,0,false); window.game.logSystem(`${m.name} 給你 受祝福的 對武器施法的卷軸。`, 'blessed'); }
     }
     if (lv >= 31) {
-        if(Math.random()*100 < 0.1 * multi * window.RateDropItems) { window.game.addInventory('scroll_accessory',1,0,false); window.game.logSystem(`${m.name} 給你 對飾品施法的卷軸。`, 'reward'); }
+        if(Math.random()*100 < 0.1 * multi * window.RateDropItems * dropChanceMultiplier) { window.game.addInventory('scroll_accessory',1,0,false); window.game.logSystem(`${m.name} 給你 對飾品施法的卷軸。`, 'reward'); }
     }
     
     if(m.drops) {
         m.drops.forEach(d => { 
-            if(Math.random()*100 < d.rate * multi * window.RateDropItems) {
+            if(Math.random()*100 < d.rate * multi * window.RateDropItems * dropChanceMultiplier) {
                 if(window.ITEMS[d.id] && window.ITEMS[d.id].type === 'book' && window.game.state.spells.includes(window.ITEMS[d.id].spellId)) {
                     let sell = 100 * Math.pow(window.SPELLS[window.ITEMS[d.id].spellId].level, 2);
                     window.game.state.adena += sell;
@@ -222,22 +256,33 @@ window.game.monsterDied = function() {
     
     if (m.id === 'antaras') window.game.state.antarasDeadUntil = Date.now() + 600000;
 
-    if (document.getElementById('target-name-arena')) {
-        document.getElementById('target-name-arena').innerText = '尋找目標中...';
-        document.getElementById('target-name-arena').className = 'c-err font-black text-xl tracking-wider text-shadow';
-    }
-    if (document.getElementById('target-hp-container-arena')) {
-        document.getElementById('target-hp-container-arena').classList.add('hidden');
-    }
+    window.game.state.targetMonsters[index] = null;
     
-    window.game.state.targetMonster = null;
+    // Auto-switch locked target to first active monster remaining
+    if (window.game.state.selectedTargetIndex === index) {
+        let nextIdx = -1;
+        for (let i = 0; i < 5; i++) {
+            if (window.game.state.targetMonsters[i]) {
+                nextIdx = i;
+                break;
+            }
+        }
+        window.game.state.selectedTargetIndex = nextIdx;
+        window.game.state.targetMonster = nextIdx !== -1 ? window.game.state.targetMonsters[nextIdx] : null; // fallback
+    }
+
     window.game.checkLevelUp();
     window.game.updateUI();
     
-    if (window.game.state.currentMap === 'antaras_lair' && m.id === 'antaras') {
-        setTimeout(() => { if(window.game.state.isPlaying) window.game.spawnMonster(); }, 1000);
-    } else {
-        setTimeout(() => { if(window.game.state.isPlaying) window.game.spawnMonster(); }, 500);
+    // If no monsters remaining, spawn more after a short delay
+    let anyRemaining = false;
+    for (let i = 0; i < 5; i++) {
+        if (window.game.state.targetMonsters[i]) anyRemaining = true;
+    }
+    
+    if (!anyRemaining) {
+        let delay = (m.id === 'antaras') ? 1000 : 500;
+        setTimeout(() => { if(window.game.state.isPlaying) window.game.spawnMonster(); }, delay);
     }
 };
 

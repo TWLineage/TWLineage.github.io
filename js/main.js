@@ -15,7 +15,15 @@ window.game.triggerQuickslot = function(slotId) {
     } else if (slotId === 'f6') {
         let sId = window.game.state.settings.autoAttack;
         if (sId !== 'none' && window.SPELLS[sId]) {
-            if (window.game.state.targetMonster) {
+            // Find active target
+            let activeTarget = false;
+            for (let i = 0; i < 5; i++) {
+                if (window.game.state.targetMonsters[i]) {
+                    activeTarget = true;
+                    break;
+                }
+            }
+            if (activeTarget) {
                 window.game.playerMagicAttack();
             } else {
                 window.game.logSystem(`快捷鍵 F6：沒有戰鬥目標！`, 'warn');
@@ -29,27 +37,52 @@ window.game.triggerQuickslot = function(slotId) {
 };
 
 window.game.init = function() {
-    window.game.renderMapSelect();
-    window.game.checkSaveFile();
-    window.game.switchForumTab('all');
-    window.game.makeWindowsDraggable();
-    
-    // Quickslots (F5-F12) Key Listeners
-    window.addEventListener('keydown', (e) => {
-        if (['F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key)) {
-            e.preventDefault();
-            const slotId = e.key.toLowerCase();
-            window.game.triggerQuickslot(slotId);
+    try {
+        window.game.renderMapSelect();
+        window.game.checkSaveFile();
+        window.game.switchForumTab('all');
+        window.game.makeWindowsDraggable();
+        window.game.updateBGMButton();
+        
+        // Autoplay bypass trigger on document interaction
+        const startPlay = () => {
+            window.game.playBGM();
+            document.removeEventListener('click', startPlay);
+            document.removeEventListener('touchstart', startPlay);
+        };
+        document.addEventListener('click', startPlay);
+        document.addEventListener('touchstart', startPlay);
+        
+        // Quickslots (F5-F12) Key Listeners
+        window.addEventListener('keydown', (e) => {
+            if (['F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key)) {
+                e.preventDefault();
+                const slotId = e.key.toLowerCase();
+                window.game.triggerQuickslot(slotId);
+            }
+        });
+
+        // Bind monster slots clicking dynamically
+        for (let i = 0; i < 5; i++) {
+            let el = document.getElementById(`monster-slot-${i}`);
+            if (el) {
+                el.addEventListener('click', () => {
+                    window.game.selectTargetSlot(i);
+                });
+            }
         }
-    });
+    } catch (err) {
+        alert("【系統啟動失敗 / game.init() Error】\n\n訊息: " + err.message + "\n\n堆疊: " + err.stack);
+    }
 };
 
 window.game.renderMapSelect = function() {
     const select = document.getElementById('win-map-select');
+    const selectArena = document.getElementById('win-arena-map-select');
     let keys = Object.keys(window.MAPS).filter(k => k !== 'antaras_lair');
     keys.sort((a, b) => window.MAPS[a].name.localeCompare(window.MAPS[b].name, 'zh-TW'));
-    select.innerHTML = '';
     
+    let html = '';
     const getMapLevelDesc = (mapId) => {
         let map = window.MAPS[mapId];
         if (!map || !map.monsters || map.monsters.length === 0) return '';
@@ -61,10 +94,18 @@ window.game.renderMapSelect = function() {
     };
 
     keys.forEach(k => { 
-        select.innerHTML += `<option value="${k}">${window.MAPS[k].name}${getMapLevelDesc(k)}</option>`; 
+        html += `<option value="${k}">${window.MAPS[k].name}${getMapLevelDesc(k)}</option>`; 
     });
-    select.innerHTML += `<option value="antaras_lair" class="text-yellow-500 font-bold">${window.MAPS['antaras_lair'].name}${getMapLevelDesc('antaras_lair')}</option>`;
-    select.value = window.game.state.currentMap;
+    html += `<option value="antaras_lair" class="text-yellow-500 font-bold">${window.MAPS['antaras_lair'].name}${getMapLevelDesc('antaras_lair')}</option>`;
+    
+    if (select) {
+        select.innerHTML = html;
+        select.value = window.game.state.currentMap;
+    }
+    if (selectArena) {
+        selectArena.innerHTML = html;
+        selectArena.value = window.game.state.currentMap;
+    }
 };
 
 window.game.checkSaveFile = function() {
@@ -74,18 +115,70 @@ window.game.checkSaveFile = function() {
 window.game.showCreation = function() {
     document.getElementById('start-menu').classList.add('hidden');
     document.getElementById('creation-menu').classList.remove('hidden');
-    window.game.updateCreateUI();
+    document.getElementById('creation-action-menu').classList.remove('hidden');
+    
+    // Set default class Prince and gender Male on creation display
+    window.game.selectClass('prince');
+    window.game.selectGender('male');
+    
+    window.game.playBGM();
 };
 
 window.game.showStartMenu = function() {
     document.getElementById('creation-menu').classList.add('hidden');
+    document.getElementById('creation-action-menu').classList.add('hidden');
     document.getElementById('start-menu').classList.remove('hidden');
+};
+
+window.game.playBGM = function() {
+    const player = document.getElementById('bgm-player');
+    if (player && player.paused) {
+        player.play().then(() => {
+            window.game.state.bgmPlaying = true;
+            window.game.updateBGMButton();
+        }).catch(err => {
+            console.log("Autoplay blocked by browser. Awaiting user interaction.", err);
+        });
+    }
+};
+
+window.game.toggleBGM = function() {
+    const player = document.getElementById('bgm-player');
+    if (!player) return;
+    if (player.paused) {
+        player.play().then(() => {
+            window.game.state.bgmPlaying = true;
+            window.game.updateBGMButton();
+            window.game.logSystem("背景音樂已開啟。");
+        });
+    } else {
+        player.pause();
+        window.game.state.bgmPlaying = false;
+        window.game.updateBGMButton();
+        window.game.logSystem("背景音樂已暫停。");
+    }
+};
+
+window.game.updateBGMButton = function() {
+    const btn = document.getElementById('btn-bgm-toggle');
+    const player = document.getElementById('bgm-player');
+    if (!btn || !player) return;
+    if (player.paused) {
+        btn.innerHTML = '<i class="fas fa-volume-mute mr-1"></i>音樂: 靜音';
+        btn.classList.remove('border-yellow-600', 'text-yellow-400');
+        btn.classList.add('border-zinc-700', 'text-zinc-400');
+    } else {
+        btn.innerHTML = '<i class="fas fa-volume-up mr-1"></i>音樂: 播放中';
+        btn.classList.remove('border-zinc-700', 'text-zinc-400');
+        btn.classList.add('border-yellow-600', 'text-yellow-400');
+    }
 };
 
 window.game.saveGame = function() {
     const saveData = {
         level: window.game.state.level, exp: window.game.state.exp, adena: window.game.state.adena,
         hp: window.game.state.hp, maxHp: window.game.state.maxHp, mp: window.game.state.mp, maxMp: window.game.state.maxMp,
+        class: window.game.state.class || 'prince', gender: window.game.state.gender || 'male',
         baseStats: window.game.state.baseStats, bonusPoints: window.game.state.bonusPoints,
         inventory: window.game.state.inventory, equipment: window.game.state.equipment, spells: window.game.state.spells,
         settings: window.game.state.settings, currentMap: window.game.state.currentMap, antarasDeadUntil: window.game.state.antarasDeadUntil
@@ -137,7 +230,9 @@ window.game.loadGame = function() {
             window.game.state.level = parseInt(savedData.level) || 1;
             window.game.state.exp = parseInt(savedData.exp) || 0;
             window.game.state.adena = parseInt(savedData.adena) || 0;
-            window.game.state.baseStats = savedData.baseStats || { str: 8, dex: 8, con: 8, int: 8, wis: 8 };
+            window.game.state.class = savedData.class || 'prince';
+            window.game.state.gender = savedData.gender || 'male';
+            window.game.state.baseStats = savedData.baseStats || { str: 13, dex: 10, con: 12, int: 11, wis: 11, cha: 13 };
             window.game.state.createPoints = parseInt(savedData.createPoints) || 0;
             window.game.state.bonusPoints = parseInt(savedData.bonusPoints) || 0;
             window.game.state.spells = Array.isArray(savedData.spells) ? savedData.spells.filter(id => window.SPELLS[id]) : [];
@@ -151,7 +246,9 @@ window.game.loadGame = function() {
             if(!window.game.state.settings.autoHealSpell) window.game.state.settings.autoHealSpell = 'none';
 
             window.game.state.buffs = {}; 
+            window.game.state.targetMonsters = [null, null, null, null, null];
             window.game.state.targetMonster = null;
+            window.game.state.selectedTargetIndex = 0;
             window.game.state.zombieTick = 0;
             window.game.state.monsterSpecialTick = 0;
             
@@ -176,10 +273,19 @@ window.game.loadGame = function() {
             document.getElementById('win-cfg-heal-threshold').value = window.game.state.settings.autoHealThreshold;
             
             let mapSel = document.getElementById('win-map-select');
-            if (Array.from(mapSel.options).some(o => o.value === window.game.state.currentMap)) mapSel.value = window.game.state.currentMap;
-            else { window.game.state.currentMap = 'knight_village'; mapSel.value = 'knight_village'; }
+            let arenaSel = document.getElementById('win-arena-map-select');
+            let hasMap = mapSel && Array.from(mapSel.options).some(o => o.value === window.game.state.currentMap);
+            if (hasMap) {
+                if (mapSel) mapSel.value = window.game.state.currentMap;
+                if (arenaSel) arenaSel.value = window.game.state.currentMap;
+            } else {
+                window.game.state.currentMap = 'knight_village';
+                if (mapSel) mapSel.value = 'knight_village';
+                if (arenaSel) arenaSel.value = 'knight_village';
+            }
             
             window.game.logSystem('讀取存檔成功！歡迎回來。', 'reward');
+            window.game.playBGM();
             window.game.startLoops();
             window.game.startBattle();
         } catch (e) {
@@ -194,30 +300,114 @@ window.game.deleteSave = function() {
     window.game.logSystem('存檔已刪除。', 'danger');
 };
 
+window.game.selectClass = function(classId) {
+    try {
+        window.game.state.class = classId;
+        
+        const details = {
+            prince: { icon: '👑', title: '王族 (Prince)', role: '輔助、BUFF、召喚', desc: '王族可以建立血盟，增加盟員上限，並提供全隊增益BUFF。金幣收益額外+20%，經驗值獲取額外+10%。' },
+            knight: { icon: '🛡️', title: '騎士 (Knight)', role: '坦克、近戰', desc: '最強壯、生存能力最高的近戰坦克。體力(HP)上限額外+30%，極高防禦與減傷優勢。' },
+            elf: { icon: '🏹', title: '妖精 (Elf)', role: '遠程輸出', desc: '身手敏捷的森林守護者。物理攻擊速度額外增加20%，且獲得額外+10%掉寶率加成。' },
+            mage: { icon: '🧙', title: '法師 (Mage)', role: '魔法輸出', desc: '掌握自然奧秘與強大魔法的導師。攻擊法術具有強大範圍傷害，可同時攻擊場上所有怪物，且傷害額外提升100%。' },
+            dark_elf: { icon: '🗡️', title: '黑妖 (Dark Elf)', role: '爆擊輸出', desc: '擅長暗殺與近身奇襲的黑夜殺手。擁有高達20%的初始爆擊率，且爆擊時造成+150%額外傷害(共300%傷害)。' },
+            dragon_knight: { icon: '🐲', title: '龍騎士 (Dragon Knight)', role: '持續傷害', desc: '擁有龍之血脈與龍牙之力的戰士。對所有的 BOSS 及首領怪物造成額外+30%的強大物理傷害。' },
+            illusionist: { icon: '🔮', title: '幻術師 (Illusionist)', role: '控場、BUFF', desc: '擅長操縱精神幻境與控場心靈的幻術師。對怪物造成的沉睡、緩速、黑闇、疾病等減益狀態持續時間延長50%。' }
+        };
+        
+        let det = details[classId] || details.prince;
+        let bases = window.CLASS_BASES[classId] || window.CLASS_BASES.prince;
+        
+        if (document.getElementById('class-portrait-box')) document.getElementById('class-portrait-box').innerText = det.icon;
+        if (document.getElementById('class-desc-title')) document.getElementById('class-desc-title').innerText = det.title;
+        if (document.getElementById('class-desc-role')) document.getElementById('class-desc-role').innerText = det.role;
+        if (document.getElementById('class-desc-text')) document.getElementById('class-desc-text').innerText = det.desc;
+        if (document.getElementById('class-base-hp-text')) document.getElementById('class-base-hp-text').innerText = bases.hp;
+        if (document.getElementById('class-base-mp-text')) document.getElementById('class-base-mp-text').innerText = bases.mp;
+        
+        // Update active class on selector buttons using data-class attribute
+        document.querySelectorAll('.class-sel-btn').forEach(btn => {
+            if (btn.getAttribute('data-class') === classId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Reset stats to bases & give 10 custom points
+        window.game.state.baseStats = { ...bases };
+        window.game.state.createPoints = 10;
+        
+        window.game.updateCreateUI();
+    } catch (err) {
+        alert("【切換職業失敗 / selectClass() Error】\n\n訊息: " + err.message + "\n\n堆疊: " + err.stack);
+    }
+};
+
+window.game.selectGender = function(gender) {
+    window.game.state.gender = gender;
+    
+    let maleBtn = document.getElementById('gender-male');
+    let femaleBtn = document.getElementById('gender-female');
+    if (gender === 'male') {
+        if (maleBtn) maleBtn.classList.add('active');
+        if (femaleBtn) femaleBtn.classList.remove('active');
+    } else {
+        if (femaleBtn) femaleBtn.classList.add('active');
+        if (maleBtn) maleBtn.classList.remove('active');
+    }
+};
+
 window.game.adjustStat = function(stat, amount) {
-    if(amount > 0 && window.game.state.createPoints > 0 && window.game.state.baseStats[stat] < 18) { window.game.state.baseStats[stat]++; window.game.state.createPoints--; } 
-    else if(amount < 0 && window.game.state.baseStats[stat] > 8) { window.game.state.baseStats[stat]--; window.game.state.createPoints++; }
-    window.game.updateCreateUI();
+    try {
+        let cls = window.game.state.class || 'prince';
+        let bases = window.CLASS_BASES[cls] || window.CLASS_BASES.prince;
+        let baseLimit = bases[stat] || 8;
+        let currentVal = window.game.state.baseStats[stat] || 8;
+        
+        if (amount > 0 && window.game.state.createPoints > 0 && currentVal < 25) {
+            window.game.state.baseStats[stat]++;
+            window.game.state.createPoints--;
+        } else if (amount < 0 && currentVal > baseLimit) {
+            window.game.state.baseStats[stat]--;
+            window.game.state.createPoints++;
+        }
+        
+        window.game.updateCreateUI();
+    } catch (err) {
+        alert("【點數分配失敗 / adjustStat() Error】\n\n訊息: " + err.message + "\n\n堆疊: " + err.stack);
+    }
 };
 
 window.game.updateCreateUI = function() {
-    ['str','dex','con','int','wis'].forEach(s => document.getElementById(`create-${s}`).innerText = window.game.state.baseStats[s]);
-    document.getElementById('create-points').innerText = window.game.state.createPoints;
-    document.getElementById('btn-start').disabled = window.game.state.createPoints > 0;
+    ['str','dex','con','int','wis','cha'].forEach(s => {
+        let el = document.getElementById(`create-${s}`);
+        if (el) el.innerText = window.game.state.baseStats[s] || 8;
+    });
+    let ptsEl = document.getElementById('create-points');
+    if (ptsEl) ptsEl.innerText = window.game.state.createPoints;
+    
+    let btnStart = document.getElementById('btn-start');
+    if (btnStart) btnStart.disabled = window.game.state.createPoints > 0;
 };
 
 window.game.startGame = function() {
     document.getElementById('char-creation-modal').style.display = 'none';
     document.getElementById('main-ui').classList.remove('hidden');
+    
+    // Give initial starter gear
     window.game.addInventory('dagger_orc', 1, 0, false);
     window.game.addInventory('potion_red', 50, 0, false);
+    
     window.game.calculateMaxHpMp();
     window.game.state.hp = window.game.state.maxHp;
     window.game.state.mp = window.game.state.maxMp;
+    
     window.game.updateUI();
     window.game.renderInventory();
     window.game.renderSkills();
-    window.game.logSystem('歡迎來到天堂放置版。你的冒險開始了！', 'reward');
+    
+    window.game.logSystem('歡迎來到天堂放置版！你的傳奇冒險正式展開。', 'reward');
+    window.game.playBGM();
     window.game.startLoops();
     window.game.startBattle();
 };
@@ -235,45 +425,100 @@ window.game.toggleAutoCombatArena = function() {
         window.game.stopBattle();
         if (btn) {
             btn.innerHTML = '<i class="fas fa-play mr-1"></i>開始自動';
-            btn.className = "btn-ui !py-2.5 text-xs font-bold w-full bg-red-950/60 border-red-800 text-red-200 hover:border-red-500";
+            btn.className = "btn-ui !py-1 text-xs font-bold bg-red-950/60 border-red-800 text-red-200 hover:border-red-500";
         }
         window.game.logSystem('停止自動戰鬥。');
     } else {
         window.game.startBattle();
         if (btn) {
             btn.innerHTML = '<i class="fas fa-pause mr-1"></i>停止自動';
-            btn.className = "btn-ui !py-2.5 text-xs font-bold w-full bg-red-800 border-red-500 text-white hover:bg-red-900";
+            btn.className = "btn-ui !py-1 text-xs font-bold bg-red-800 border-red-500 text-white hover:bg-red-950";
         }
         window.game.logSystem('開始自動戰鬥！');
     }
 };
 
 window.game.playerAttack = function() {
-    if(!window.game.state.targetMonster || window.game.state.hp <= 0 || (window.game.state.buffs.petrified > 0) || (window.game.state.buffs.stun > 0)) return;
+    // Identify active target slot
+    let targetIndex = -1;
+    if (window.game.state.selectedTargetIndex !== null && window.game.state.targetMonsters[window.game.state.selectedTargetIndex]) {
+        targetIndex = window.game.state.selectedTargetIndex;
+    } else {
+        // Fallback: lock onto the first active monster slot
+        for (let i = 0; i < 5; i++) {
+            if (window.game.state.targetMonsters[i]) {
+                targetIndex = i;
+                window.game.state.selectedTargetIndex = i;
+                break;
+            }
+        }
+    }
+    
+    if (targetIndex === -1 || window.game.state.hp <= 0 || (window.game.state.buffs.petrified > 0) || (window.game.state.buffs.stun > 0)) return;
+    
+    let targetMonster = window.game.state.targetMonsters[targetIndex];
+    window.game.state.targetMonster = targetMonster; // keep fallback up to date
     
     let dmg = 0, isHit = false;
     let wKey = window.game.state.equipment.weapon;
     let wpn = null, wDef = null;
     if(wKey && window.game.state.inventory[wKey]) { wpn = window.game.state.inventory[wKey]; wDef = window.ITEMS[wpn.itemId]; }
     
-    let dbf = window.game.state.targetMonster.debuffs || {};
-    let tAc = window.game.state.targetMonster.ac + (dbf.disease > 0 ? 8 : 0);
-    let roll = window.rollDice('1d20');
-    let isCrit = false;
+    let dbf = targetMonster.debuffs || {};
+    let tAc = targetMonster.ac + (dbf.disease > 0 ? 8 : 0);
     
-    if(roll === 1) isHit = false;
-    else if(roll === 20) { isHit = true; isCrit = true; }
-    else if(roll + window.game.getMeleeHit() + (window.game.state.level - window.game.state.targetMonster.level) >= 10 - tAc) isHit = true;
+    // Hit Rate formula: 80% + DEX * 0.5% + lvlDiff + eqHit + tAc
+    let effDex = window.game.getEffStat('dex') + (window.game.state.buffs.dex_buff ? 5 : 0);
+    let lvlDiff = window.game.state.level - targetMonster.level;
+    let eqHit = window.game.getMeleeHit(); // includes equipment bonuses and sets
+    
+    let hitRate = 80 + effDex * 0.5 + lvlDiff + eqHit + tAc;
+    hitRate = Math.max(5, Math.min(95, hitRate)); // clamp hit rate between 5% and 95%
+    
+    let rollPercent = Math.random() * 100;
+    isHit = rollPercent <= hitRate;
+    
+    // Job critical rates
+    let cls = window.game.state.class || 'prince';
+    let critChance = 5;
+    if (cls === 'elf') critChance = 10;
+    else if (cls === 'mage') critChance = 0;
+    else if (cls === 'dark_elf') critChance = 20;
+    else if (cls === 'dragon_knight') critChance = 8;
+    
+    let isCrit = Math.random() * 100 < critChance;
+    
+    if (rollPercent <= 5) { // roll extremely low yields miss regardless
+        isHit = false;
+    }
+    if (rollPercent >= 95) { // roll extremely high yields hit and crit regardless
+        isHit = true;
+        isCrit = true;
+    }
     
     if(isHit) {
         let dice = wDef && wDef.dice ? wDef.dice : '1d2';
         let dDmg = isCrit ? parseInt(dice.split('d')[1]) : window.rollDice(dice);
         let bonusUndead = 0;
-        if (wDef && wDef.isUndeadSlayer && (window.game.state.targetMonster.isUndead || window.game.state.targetMonster.isWerewolf)) {
+        if (wDef && wDef.isUndeadSlayer && (targetMonster.isUndead || targetMonster.isWerewolf)) {
             bonusUndead = Math.floor(Math.random() * 4) + 3; 
         }
         dmg = Math.max(1, dDmg + window.game.getMeleeDmg() + bonusUndead);
-        window.game.logCombat(`你命中了 ${window.game.state.targetMonster.name} 造成 ${dmg} 點傷害${isCrit?' (爆擊！)':''}${bonusUndead > 0 ? ` (弱點加成 +${bonusUndead})` : ''}。`, 'hit');
+        
+        // Critical multipliers (Dark Elf +150% extra = 3.0x, other jobs 1.5x)
+        let critMult = 1.5;
+        if (cls === 'dark_elf') critMult = 3.0;
+        
+        if (isCrit) {
+            dmg = Math.floor(dmg * critMult);
+        }
+        
+        // Dragon Knight BOSS dmg +30% modifier
+        if (cls === 'dragon_knight' && targetMonster.isBoss) {
+            dmg = Math.floor(dmg * 1.3);
+        }
+        
+        window.game.logCombat(`你命中了 [Slot ${targetIndex + 1}] ${targetMonster.name} 造成 ${dmg} 點傷害${isCrit?' (爆擊！)':''}${bonusUndead > 0 ? ` (弱點加成 +${bonusUndead})` : ''}。`, 'hit');
         
         if (wpn && wpn.itemId === 'staff_mana') {
             window.game.state.mp = Math.min(window.game.state.maxMp, window.game.state.mp + 1);
@@ -283,35 +528,59 @@ window.game.playerAttack = function() {
         
         if (wpn && wpn.itemId === 'hammer_thor' && Math.random() * 100 < (5 + Number(wpn.enchant))) {
             let sp = window.SPELLS['call_lightning'];
-            let finalDmg = window.game.calcMagicDmgToMonster(window.rollDice(sp.dice) + (sp.baseDmg||0) + window.game.getMagicDmg());
+            let finalDmg = window.game.calcMagicDmgToMonster(window.rollDice(sp.dice) + (sp.baseDmg||0) + window.game.getMagicDmg(), targetMonster);
             window.game.logCombat(`雷神之槌發動了 極道落雷，造成 ${finalDmg} 點傷害。`, 'magic');
-            window.game.state.targetMonster.hp -= finalDmg;
+            targetMonster.hp -= finalDmg;
         }
         
         if (wpn && wpn.itemId === 'sword_dk_fire' && Math.random() < 0.15) {
             let sp = window.SPELLS['fire_arrow'];
-            let finalDmg = window.game.calcMagicDmgToMonster(window.rollDice(sp.dice) + (sp.baseDmg||0) + window.game.getMagicDmg());
+            let finalDmg = window.game.calcMagicDmgToMonster(window.rollDice(sp.dice) + (sp.baseDmg||0) + window.game.getMagicDmg(), targetMonster);
             window.game.logCombat(`死亡騎士的烈炎之劍發動了 烈炎術，造成 ${finalDmg} 點傷害。`, 'magic');
-            window.game.state.targetMonster.hp -= finalDmg;
+            targetMonster.hp -= finalDmg;
         }
-    } else window.game.logCombat(`你的攻擊未命中 ${window.game.state.targetMonster.name}。`);
+    } else {
+        window.game.logCombat(`你的攻擊未命中 [Slot ${targetIndex + 1}] ${targetMonster.name}。`);
+    }
 
     if(isHit) {
-        window.game.state.targetMonster.hp -= dmg;
+        targetMonster.hp -= dmg;
         window.game.updateMonsterHpBar();
-        if(window.game.state.targetMonster.hp <= 0) window.game.monsterDied();
+        if(targetMonster.hp <= 0) window.game.monsterDied(targetIndex);
     }
 };
 
 window.game.playerMagicAttack = function() {
-    if(!window.game.state.targetMonster || window.game.state.hp <= 0 || (window.game.state.buffs.petrified > 0) || (window.game.state.buffs.stun > 0)) return;
+    let cls = window.game.state.class || 'prince';
     
     let sId = window.game.state.settings.autoAttack;
     if (sId === 'none' || !window.SPELLS[sId] || !window.game.getAvailableSpells().includes(sId)) return;
     let spell = window.SPELLS[sId];
     if(!window.canCastSpell(spell.level, window.game.state.level)) return;
     
-    let dbf = window.game.state.targetMonster.debuffs || {};
+    let isAoESpell = ['fireball', 'lightning_storm', 'blizzard', 'fire_storm', 'tornado', 'quake'].includes(spell.id);
+    let isMageAoE = isAoESpell && (cls === 'mage');
+    
+    // Find locked target for single-target actions
+    let targetIndex = -1;
+    if (window.game.state.selectedTargetIndex !== null && window.game.state.targetMonsters[window.game.state.selectedTargetIndex]) {
+        targetIndex = window.game.state.selectedTargetIndex;
+    } else {
+        for (let i = 0; i < 5; i++) {
+            if (window.game.state.targetMonsters[i]) {
+                targetIndex = i;
+                window.game.state.selectedTargetIndex = i;
+                break;
+            }
+        }
+    }
+    
+    if (targetIndex === -1 || window.game.state.hp <= 0 || (window.game.state.buffs.petrified > 0) || (window.game.state.buffs.stun > 0)) return;
+    
+    let targetMonster = window.game.state.targetMonsters[targetIndex];
+    
+    // Check auto spell constraints
+    let dbf = targetMonster.debuffs || {};
     if (spell.id === 'darkness' && dbf.darkness > 0) return;
     if (spell.id === 'disease' && dbf.disease > 0) return;
     if (spell.id === 'weapon_break' && dbf.weapon_break > 0) return;
@@ -324,85 +593,103 @@ window.game.playerMagicAttack = function() {
     window.game.state.mp -= cost;
     window.game.updateUI();
     
-    if (spell.id === 'slow') {
-        if (!window.game.state.targetMonster.debuffs) window.game.state.targetMonster.debuffs = {};
-        window.game.state.targetMonster.debuffs.slow = spell.duration; 
-        window.game.logCombat(`施放了 ${spell.name}，${window.game.state.targetMonster.isBoss ? '但對頭目無效' : `${window.game.state.targetMonster.name} 動作變慢了`}。`, 'magic');
-        return;
-    }
-
-    if (spell.id === 'sleep_mist') {
-        let secs = window.rollDice('1d8');
-        if (!window.game.state.targetMonster.debuffs) window.game.state.targetMonster.debuffs = {};
-        window.game.state.targetMonster.debuffs.sleep = secs;
-        window.game.logCombat(`施放了 ${spell.name}，${window.game.state.targetMonster.name} 陷入沉睡 ${secs} 秒。`, 'magic');
-        return;
+    // CC Duration Extension for Illusionist
+    let ccDuration = spell.duration || 0;
+    if (cls === 'illusionist') {
+        ccDuration = Math.floor(ccDuration * 1.5);
     }
     
-    if (spell.id === 'darkness') {
-        if (!window.game.state.targetMonster.debuffs) window.game.state.targetMonster.debuffs = {};
-        window.game.state.targetMonster.debuffs.darkness = spell.duration;
-        window.game.logCombat(`施放了 ${spell.name}，${window.game.state.targetMonster.name} 被黑闇籠罩(命中-5)。`, 'magic');
-        return;
-    }
+    const castOnMonster = (m, slotIdx) => {
+        let mDbf = m.debuffs || {};
+        if (spell.id === 'slow') {
+            m.debuffs.slow = ccDuration; 
+            window.game.logCombat(`施放了 ${spell.name}，${m.isBoss ? '但對頭目無效' : `[Slot ${slotIdx + 1}] ${m.name} 動作變慢了`}。`, 'magic');
+            return;
+        }
 
-    if (spell.id === 'disease') {
-        if (!window.game.state.targetMonster.debuffs) window.game.state.targetMonster.debuffs = {};
-        window.game.state.targetMonster.debuffs.disease = spell.duration;
-        window.game.logCombat(`施放了 ${spell.name}，${window.game.state.targetMonster.name} 感染了疾病(命中-4, AC+8)。`, 'magic');
-        return;
-    }
-
-    if (spell.id === 'weapon_break') {
-        if (!window.game.state.targetMonster.debuffs) window.game.state.targetMonster.debuffs = {};
-        window.game.state.targetMonster.debuffs.weapon_break = spell.duration;
-        window.game.logCombat(`施放了 ${spell.name}，${window.game.state.targetMonster.name} 武器受損(傷害-10)。`, 'magic');
-        return;
-    }
-
-    if (spell.dice) {
-        let totalDmg = 0;
-        let mDmg = window.game.getMagicDmg();
-        let hits = 1;
-        let diceExp = spell.dice;
-        let baseDmg = spell.baseDmg || 0;
-        let lastHitBonus = 0;
+        if (spell.id === 'sleep_mist') {
+            let secs = window.rollDice('1d8');
+            if (cls === 'illusionist') secs = Math.floor(secs * 1.5);
+            m.debuffs.sleep = secs;
+            window.game.logCombat(`施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 陷入沉睡 ${secs} 秒。`, 'magic');
+            return;
+        }
         
-        if (spell.id === 'fireball') { hits = 3; diceExp = '1d16'; baseDmg = 0; lastHitBonus = mDmg; }
-        else if (spell.id === 'lightning_storm') { hits = 9; diceExp = '1d18'; baseDmg = 0; lastHitBonus = mDmg; }
-        else if (spell.id === 'blizzard') { hits = 11; diceExp = '1d10'; baseDmg = 0; lastHitBonus = mDmg; }
-        else if (spell.id === 'fire_storm') { hits = 4; diceExp = '3d10'; baseDmg = 0; lastHitBonus = mDmg; }
-        else if (spell.id === 'tornado') { hits = 5; diceExp = '1d20'; baseDmg = 0; lastHitBonus = 5 + mDmg; }
-        else if (spell.id === 'earth_prison') { hits = 2; diceExp = '2d8'; baseDmg = 0; lastHitBonus = 0; }
-        else if (spell.id === 'quake') { hits = 4; diceExp = '3d6'; baseDmg = 0; lastHitBonus = mDmg; }
-        else { lastHitBonus = mDmg; }
+        if (spell.id === 'darkness') {
+            m.debuffs.darkness = ccDuration;
+            window.game.logCombat(`施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 被黑闇籠罩(命中-5)。`, 'magic');
+            return;
+        }
 
-        for(let i=0; i<hits; i++) {
-            let d = 0;
-            if (spell.id === 'earth_prison') {
-                d = i === 0 ? window.rollDice('2d8') : window.rollDice('2d10') + mDmg;
-            } else if (['blizzard', 'fire_storm', 'quake'].includes(spell.id)) {
-                 d = window.rollDice(diceExp) + baseDmg + mDmg;
-            } else {
-                 d = window.rollDice(diceExp) + baseDmg;
-                 if (i === hits - 1) d += lastHitBonus;
+        if (spell.id === 'disease') {
+            m.debuffs.disease = ccDuration;
+            window.game.logCombat(`施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 感染了疾病(命中-4, AC+8)。`, 'magic');
+            return;
+        }
+
+        if (spell.id === 'weapon_break') {
+            m.debuffs.weapon_break = ccDuration;
+            window.game.logCombat(`施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 武器受損(傷害-10)。`, 'magic');
+            return;
+        }
+
+        if (spell.dice) {
+            let totalDmg = 0;
+            let mDmg = window.game.getMagicDmg();
+            let hits = 1;
+            let diceExp = spell.dice;
+            let baseDmg = spell.baseDmg || 0;
+            let lastHitBonus = 0;
+            
+            if (spell.id === 'fireball') { hits = 3; diceExp = '1d16'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'lightning_storm') { hits = 9; diceExp = '1d18'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'blizzard') { hits = 11; diceExp = '1d10'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'fire_storm') { hits = 4; diceExp = '3d10'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'tornado') { hits = 5; diceExp = '1d20'; baseDmg = 0; lastHitBonus = 5 + mDmg; }
+            else if (spell.id === 'earth_prison') { hits = 2; diceExp = '2d8'; baseDmg = 0; lastHitBonus = 0; }
+            else if (spell.id === 'quake') { hits = 4; diceExp = '3d6'; baseDmg = 0; lastHitBonus = mDmg; }
+            else { lastHitBonus = mDmg; }
+
+            for(let i=0; i<hits; i++) {
+                let d = 0;
+                if (spell.id === 'earth_prison') {
+                    d = i === 0 ? window.rollDice('2d8') : window.rollDice('2d10') + mDmg;
+                } else if (['blizzard', 'fire_storm', 'quake'].includes(spell.id)) {
+                     d = window.rollDice(diceExp) + baseDmg + mDmg;
+                } else {
+                     d = window.rollDice(diceExp) + baseDmg;
+                     if (i === hits - 1) d += lastHitBonus;
+                }
+                
+                let finalDmg = window.game.calcMagicDmgToMonster(d, m);
+                totalDmg += finalDmg;
             }
             
-            let finalDmg = window.game.calcMagicDmgToMonster(d);
-            totalDmg += finalDmg;
-            window.game.logCombat(`施放了 ${spell.name}，造成 ${finalDmg} 點傷害。`, 'magic');
+            window.game.logCombat(`施放了 ${spell.name}，對 [Slot ${slotIdx + 1}] ${m.name} 造成 ${totalDmg} 點傷害。`, 'magic');
+            
+            m.hp -= totalDmg;
+            window.game.updateMonsterHpBar();
+            if(m.hp <= 0) window.game.monsterDied(slotIdx);
         }
-        
-        if(spell.healDice) {
-            let h = window.rollDice(spell.healDice);
-            if (window.game.state.buffs.heal_erosion) h = Math.floor(h / 2);
-            window.game.state.hp = Math.min(window.game.state.maxHp, window.game.state.hp + h);
-            window.game.updateUI();
+    };
+    
+    // Mage AoE hits all slots, other classes hit locked slot
+    if (isMageAoE) {
+        for (let i = 0; i < 5; i++) {
+            let m = window.game.state.targetMonsters[i];
+            if (m) {
+                castOnMonster(m, i);
+            }
         }
-        
-        window.game.state.targetMonster.hp -= totalDmg;
-        window.game.updateMonsterHpBar();
-        if(window.game.state.targetMonster.hp <= 0) window.game.monsterDied();
+    } else {
+        castOnMonster(targetMonster, targetIndex);
+    }
+    
+    if(spell.healDice) {
+        let h = window.rollDice(spell.healDice);
+        if (window.game.state.buffs.heal_erosion) h = Math.floor(h / 2);
+        window.game.state.hp = Math.min(window.game.state.maxHp, window.game.state.hp + h);
+        window.game.updateUI();
     }
 };
 
@@ -474,104 +761,111 @@ window.game.startLoops = function() {
             }
         }
 
-        if(window.game.state.targetMonster && !(window.game.state.buffs.petrified > 0)) {
-            if (window.game.state.targetMonster.debuffs) {
-                for(let k in window.game.state.targetMonster.debuffs) {
-                    if(window.game.state.targetMonster.debuffs[k] > 0) {
-                        window.game.state.targetMonster.debuffs[k]--;
-                        if(window.game.state.targetMonster.debuffs[k] <= 0) {
-                            if (k === 'slow') window.game.logCombat(`${window.game.state.targetMonster.name} 的緩速狀態結束了。`);
-                            if (k === 'sleep') window.game.logCombat(`${window.game.state.targetMonster.name} 醒來了！`);
-                            if (k === 'darkness') window.game.logCombat(`${window.game.state.targetMonster.name} 恢復了視力。`);
-                            if (k === 'disease') window.game.logCombat(`${window.game.state.targetMonster.name} 從疾病中恢復。`);
+        // Tick debuffs and specials on all 5 slots
+        let hasMonsters = false;
+        for (let i = 0; i < 5; i++) {
+            let tm = window.game.state.targetMonsters[i];
+            if (tm) {
+                hasMonsters = true;
+                if (!(window.game.state.buffs.petrified > 0)) {
+                    if (tm.debuffs) {
+                        for(let k in tm.debuffs) {
+                            if(tm.debuffs[k] > 0) {
+                                tm.debuffs[k]--;
+                                if(tm.debuffs[k] <= 0) {
+                                    if (k === 'slow') window.game.logCombat(`[Slot ${i + 1}] ${tm.name} 的緩速狀態結束了。`);
+                                    if (k === 'sleep') window.game.logCombat(`[Slot ${i + 1}] ${tm.name} 醒來了！`);
+                                    if (k === 'darkness') window.game.logCombat(`[Slot ${i + 1}] ${tm.name} 恢復了視力。`);
+                                    if (k === 'disease') window.game.logCombat(`[Slot ${i + 1}] ${tm.name} 從疾病中恢復。`);
+                                }
+                            }
                         }
                     }
-                }
-            }
-            
-            window.game.state.monsterSpecialTick++;
-            let st = window.game.state.monsterSpecialTick;
-            let tm = window.game.state.targetMonster;
-            let tmId = tm.id;
-            
-            if (st % 5 === 0 && !(tm.debuffs?.sleep > 0) && tmId === 'hellhound') {
-                window.game.logCombat(`地獄犬發動噴火，造成 ${window.game.takeMagicDmg(window.rollDice('3d8'))} 點魔法傷害！`, 'danger');
-                needUpdate = true; window.game.checkPlayerDeath();
-            }
-            
-            if (tmId === 'black_elder' && !(tm.debuffs?.sleep > 0)) {
-                if (st % 8 === 0) {
-                    window.game.logCombat(`黑長者發動極道落雷，造成 ${window.game.takeMagicDmg(window.rollDice('5d16')+40)} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 15 === 0) {
-                    for(let i=0; i<8; i++) window.game.logCombat(`黑長者施展龍捲風，造成 ${window.game.takeMagicDmg(window.rollDice('1d20')+5)} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 30 === 0 && tm.hp < tm.maxHp * 0.5 && Math.random() * 100 < (90 - window.game.getMR())) {
-                    window.game.state.buffs.heal_erosion = 15;
-                    window.game.logCombat(`黑長者施展了治癒侵蝕術，你的恢復量減半！`, 'danger');
-                    needUpdate = true;
-                }
-            }
-
-            if (st % 10 === 0 && !(tm.debuffs?.sleep > 0) && tmId === 'arian') {
-                if (Math.random() * 100 < (50 - window.game.getMR())) {
-                    window.game.state.buffs.petrified = 4;
-                    window.game.logCombat(`亞力安施展了石化攻擊，你陷入了石化！`, 'danger');
-                    needUpdate = true;
-                }
-            }
-            
-            if (tmId === 'wyrm' && !(tm.debuffs?.sleep > 0)) {
-                if (st % 12 === 0) {
-                    window.game.logCombat(`飛龍發動火焰噴吐，造成 ${window.game.takeMagicDmg(window.rollDice('6d20')+40)} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 17 === 0 && tm.hp < tm.maxHp * 0.5) {
-                    for(let i=0; i<8; i++) {
-                        let base = window.rollDice('1d20') + 3;
-                        if (i < 2) base += window.rollDice('1d20') + 3; 
-                        window.game.logCombat(`飛龍施展流星雨，造成 ${window.game.takeMagicDmg(base)} 點魔法傷害！`, 'danger');
+                    
+                    window.game.state.monsterSpecialTick++;
+                    let st = window.game.state.monsterSpecialTick;
+                    let tmId = tm.id;
+                    
+                    if (st % 5 === 0 && !(tm.debuffs?.sleep > 0) && tmId === 'hellhound') {
+                        window.game.logCombat(`[Slot ${i + 1}] 地獄犬發動噴火，造成 ${window.game.takeMagicDmg(window.rollDice('3d8'))} 點魔法傷害！`, 'danger');
+                        needUpdate = true; window.game.checkPlayerDeath();
                     }
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-            }
-            
-            if (tmId === 'antaras' && !(tm.debuffs?.sleep > 0)) {
-                if (st % 8 === 0) {
-                    window.game.logCombat(`安塔瑞斯施展地裂術，造成 ${window.game.takeMagicDmg(window.rollDice('5d20'))} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 30 === 0) {
-                    window.game.state.buffs.poison_storm = 15;
-                    window.game.logCombat(`安塔瑞斯施展了毒氣風暴！`, 'danger');
-                    needUpdate = true;
-                }
-                if (st % 40 === 0) {
-                    window.game.state.buffs.player_weapon_break = 20;
-                    window.game.logCombat(`安塔瑞斯施展了壞物術，你的武器傷害降低了！`, 'danger');
-                    needUpdate = true;
-                }
-                if (st % 12 === 0 && tm.hp < tm.maxHp * 0.5) {
-                    window.game.logCombat(`安塔瑞斯發動大地怒吼，造成 ${window.game.takeMagicDmg(window.rollDice('10d20'))} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-            }
+                    
+                    if (tmId === 'black_elder' && !(tm.debuffs?.sleep > 0)) {
+                        if (st % 8 === 0) {
+                            window.game.logCombat(`[Slot ${i + 1}] 黑長者發動極道落雷，造成 ${window.game.takeMagicDmg(window.rollDice('5d16')+40)} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 15 === 0) {
+                            for(let j=0; j<8; j++) window.game.logCombat(`[Slot ${i + 1}] 黑長者施展龍捲風，造成 ${window.game.takeMagicDmg(window.rollDice('1d20')+5)} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 30 === 0 && tm.hp < tm.maxHp * 0.5 && Math.random() * 100 < (90 - window.game.getMR())) {
+                            window.game.state.buffs.heal_erosion = 15;
+                            window.game.logCombat(`[Slot ${i + 1}] 黑長者施展了治癒侵蝕術，你的恢復量減半！`, 'danger');
+                            needUpdate = true;
+                        }
+                    }
 
-            if (tmId === 'death_knight' && !(tm.debuffs?.sleep > 0)) {
-                if (st % 7 === 0) {
-                    window.game.logCombat(`死亡騎士施展光球，造成 ${window.game.takeMagicDmg(window.rollDice('3d30')+30)} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 18 === 0) {
-                    window.game.logCombat(`死亡騎士施展地面震裂，造成 ${window.game.takeMagicDmg(window.rollDice('10d20')+50)} 點魔法傷害！`, 'danger');
-                    needUpdate = true; window.game.checkPlayerDeath();
-                }
-                if (st % 15 === 0 && tm.hp < tm.maxHp * 0.5 && Math.random() < 0.30) {
-                    window.game.state.buffs.stun = 4;
-                    window.game.logCombat(`死亡騎士發動衝暈，你陷入了昏迷！`, 'danger');
-                    needUpdate = true;
+                    if (st % 10 === 0 && !(tm.debuffs?.sleep > 0) && tmId === 'arian') {
+                        if (Math.random() * 100 < (50 - window.game.getMR())) {
+                            window.game.state.buffs.petrified = 4;
+                            window.game.logCombat(`[Slot ${i + 1}] 亞力安施展了石化攻擊，你陷入了石化！`, 'danger');
+                            needUpdate = true;
+                        }
+                    }
+                    
+                    if (tmId === 'wyrm' && !(tm.debuffs?.sleep > 0)) {
+                        if (st % 12 === 0) {
+                            window.game.logCombat(`[Slot ${i + 1}] 飛龍發動火焰噴吐，造成 ${window.game.takeMagicDmg(window.rollDice('6d20')+40)} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 17 === 0 && tm.hp < tm.maxHp * 0.5) {
+                            for(let j=0; j<8; j++) {
+                                let base = window.rollDice('1d20') + 3;
+                                if (j < 2) base += window.rollDice('1d20') + 3; 
+                                window.game.logCombat(`[Slot ${i + 1}] 飛龍施展流星雨，造成 ${window.game.takeMagicDmg(base)} 點魔法傷害！`, 'danger');
+                            }
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                    }
+                    
+                    if (tmId === 'antaras' && !(tm.debuffs?.sleep > 0)) {
+                        if (st % 8 === 0) {
+                            window.game.logCombat(`[Slot ${i + 1}] 安塔瑞斯施展地裂術，造成 ${window.game.takeMagicDmg(window.rollDice('5d20'))} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 30 === 0) {
+                            window.game.state.buffs.poison_storm = 15;
+                            window.game.logCombat(`[Slot ${i + 1}] 安塔瑞斯施展了毒氣風暴！`, 'danger');
+                            needUpdate = true;
+                        }
+                        if (st % 40 === 0) {
+                            window.game.state.buffs.player_weapon_break = 20;
+                            window.game.logCombat(`[Slot ${i + 1}] 安塔瑞斯施展了壞物術，你的武器傷害降低了！`, 'danger');
+                            needUpdate = true;
+                        }
+                        if (st % 12 === 0 && tm.hp < tm.maxHp * 0.5) {
+                            window.game.logCombat(`[Slot ${i + 1}] 安塔瑞斯發動大地怒吼，造成 ${window.game.takeMagicDmg(window.rollDice('10d20'))} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                    }
+
+                    if (tmId === 'death_knight' && !(tm.debuffs?.sleep > 0)) {
+                        if (st % 7 === 0) {
+                            window.game.logCombat(`[Slot ${i + 1}] 死亡騎士施展光球，造成 ${window.game.takeMagicDmg(window.rollDice('3d30')+30)} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 18 === 0) {
+                            window.game.logCombat(`[Slot ${i + 1}] 死亡騎士施展地面震裂，造成 ${window.game.takeMagicDmg(window.rollDice('10d20')+50)} 點魔法傷害！`, 'danger');
+                            needUpdate = true; window.game.checkPlayerDeath();
+                        }
+                        if (st % 15 === 0 && tm.hp < tm.maxHp * 0.5 && Math.random() < 0.30) {
+                            window.game.state.buffs.stun = 4;
+                            window.game.logCombat(`[Slot ${i + 1}] 死亡騎士發動衝暈，你陷入了昏迷！`, 'danger');
+                            needUpdate = true;
+                        }
+                    }
                 }
             }
         }
@@ -581,43 +875,60 @@ window.game.startLoops = function() {
             needUpdate = true; window.game.checkPlayerDeath();
         }
         
-        if (!(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) {
-            if (window.game.state.targetMonster && window.game.state.buffs.create_zombie > 0) {
+        // Summons tick (locks on locked slot index)
+        let lockedIdx = -1;
+        if (window.game.state.selectedTargetIndex !== null && window.game.state.targetMonsters[window.game.state.selectedTargetIndex]) {
+            lockedIdx = window.game.state.selectedTargetIndex;
+        } else {
+            for (let i = 0; i < 5; i++) {
+                if (window.game.state.targetMonsters[i]) {
+                    lockedIdx = i;
+                    break;
+                }
+            }
+        }
+        
+        if (lockedIdx !== -1 && !(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) {
+            let tm = window.game.state.targetMonsters[lockedIdx];
+            if (tm && window.game.state.buffs.create_zombie > 0) {
                 window.game.state.zombieTick++;
                 if (window.game.state.zombieTick >= 2) {
                     window.game.state.zombieTick = 0;
                     let roll = window.rollDice('1d20');
                     let isHit = false;
                     if(roll === 20) isHit = true;
-                    else if(roll !== 1 && roll + (window.game.state.level - window.game.state.targetMonster.level) >= 10 - window.game.state.targetMonster.ac) isHit = true;
+                    else if(roll !== 1 && roll + (window.game.state.level - tm.level) >= 10 - tm.ac) isHit = true;
 
                     if (isHit) {
                         let dmg = window.rollDice('2d4');
-                        window.game.state.targetMonster.hp -= dmg;
-                        window.game.logCombat(`隨從(人形殭屍) 命中了 ${window.game.state.targetMonster.name} 造成 ${dmg} 點傷害。`, 'success');
+                        tm.hp -= dmg;
+                        window.game.logCombat(`隨從(人形殭屍) 命中了 [Slot ${lockedIdx + 1}] ${tm.name} 造成 ${dmg} 點傷害。`, 'success');
                         window.game.updateMonsterHpBar();
-                        if(window.game.state.targetMonster.hp <= 0) window.game.monsterDied();
-                    } else window.game.logCombat(`隨從(人形殭屍) 的攻擊未命中 ${window.game.state.targetMonster.name}。`);
+                        if(tm.hp <= 0) window.game.monsterDied(lockedIdx);
+                    } else window.game.logCombat(`隨從(人形殭屍) 的攻擊未命中 [Slot ${lockedIdx + 1}] ${tm.name}。`);
                 }
             }
 
-            if (window.game.state.targetMonster && window.game.state.buffs.summon_ogre > 0) {
+            if (tm && window.game.state.buffs.summon_ogre > 0) {
                 if (window.game.state.zombieTick === 0) { 
                     let roll = window.rollDice('1d20');
                     let isHit = false;
                     if(roll === 20) isHit = true;
-                    else if(roll !== 1 && roll + (window.game.state.level - window.game.state.targetMonster.level) >= 10 - window.game.state.targetMonster.ac) isHit = true;
+                    else if(roll !== 1 && roll + (window.game.state.level - tm.level) >= 10 - tm.ac) isHit = true;
 
                     if (isHit) {
                         let dmg = window.rollDice('2d8') * 4;
-                        window.game.state.targetMonster.hp -= dmg;
-                        window.game.logCombat(`召喚的食人妖精 連續猛擊了 ${window.game.state.targetMonster.name} 造成 ${dmg} 點傷害。`, 'success');
+                        tm.hp -= dmg;
+                        window.game.logCombat(`召喚的食人妖精 連續猛擊了 [Slot ${lockedIdx + 1}] ${tm.name} 造成 ${dmg} 點傷害。`, 'success');
                         window.game.updateMonsterHpBar();
-                        if(window.game.state.targetMonster.hp <= 0) window.game.monsterDied();
+                        if(tm.hp <= 0) window.game.monsterDied(lockedIdx);
                     }
                 }
             }
+        }
 
+        // Auto buff castings
+        if (!(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) {
             for(let sId of window.game.state.settings.autoBuffs) {
                 let sp = window.SPELLS[sId];
                 if(availSpells.includes(sId) && window.canCastSpell(sp.level, window.game.state.level)) {
@@ -713,11 +1024,25 @@ window.game.startLoops = function() {
 
 window.game.startBattle = function() {
     window.game.state.isPlaying = true;
-    if(!window.game.state.targetMonster) window.game.spawnMonster();
+    
+    // Check if any monsters are active, if not spawn
+    let activeFound = false;
+    for (let i = 0; i < 5; i++) {
+        if (window.game.state.targetMonsters[i]) activeFound = true;
+    }
+    if(!activeFound) window.game.spawnMonster();
     
     const playerLoopFn = () => {
         if(!window.game.state.isPlaying || window.game.state.hp <= 0) return;
-        if(window.game.state.targetMonster && !(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) window.game.playerAttack();
+        
+        let hasMonsters = false;
+        for (let i = 0; i < 5; i++) {
+            if (window.game.state.targetMonsters[i]) hasMonsters = true;
+        }
+        
+        if(hasMonsters && !(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) {
+            window.game.playerAttack();
+        }
         
         let wKey = window.game.state.equipment.weapon;
         let speed = (wKey && window.game.state.inventory[wKey]) ? (window.ITEMS[window.game.state.inventory[wKey].itemId]?.speed || 1200) : 1200;
@@ -725,29 +1050,64 @@ window.game.startBattle = function() {
         let reduction = 0;
         if (window.game.state.buffs.haste) reduction += 0.2;
         if (window.game.state.buffs.greater_haste) reduction += 0.3;
-        speed = speed * (1 - reduction);
+        
+        // Elf attack speed +20% trait
+        if (window.game.state.class === 'elf') {
+            reduction += 0.2;
+        }
+        
+        speed = speed * (1 - Math.min(0.9, reduction));
         
         window.game.state.battleLoop = setTimeout(playerLoopFn, speed);
     };
 
     const magicLoopFn = () => {
         if(!window.game.state.isPlaying || window.game.state.hp <= 0) return;
-        if(window.game.state.targetMonster && !(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) window.game.playerMagicAttack();
+        
+        let hasMonsters = false;
+        for (let i = 0; i < 5; i++) {
+            if (window.game.state.targetMonsters[i]) hasMonsters = true;
+        }
+        
+        if(hasMonsters && !(window.game.state.buffs.petrified > 0) && !(window.game.state.buffs.stun > 0)) {
+            window.game.playerMagicAttack();
+        }
         window.game.state.magicLoop = setTimeout(magicLoopFn, 3000);
     };
 
     const monsterLoopFn = () => {
-        if(!window.game.state.isPlaying || window.game.state.hp <= 0) return;
-        if(window.game.state.targetMonster) {
-            if (window.game.state.targetMonster.debuffs?.sleep > 0) {
-                window.game.state.monsterLoop = setTimeout(monsterLoopFn, 1000);
-                return;
-            }
-            window.game.monsterAttack();
+        if(!window.game.state.isPlaying || window.game.state.hp <= 0) {
+            window.game.state.monsterLoop = setTimeout(monsterLoopFn, 200);
+            return;
         }
-        let speed = window.game.state.targetMonster ? window.game.state.targetMonster.atkSpeed : 2000;
-        if (window.game.state.targetMonster?.debuffs?.slow > 0 && !window.game.state.targetMonster.isBoss) speed += 1000;
-        window.game.state.monsterLoop = setTimeout(monsterLoopFn, speed);
+        
+        let activeFound = false;
+        for (let i = 0; i < 5; i++) {
+            let m = window.game.state.targetMonsters[i];
+            if (m) {
+                activeFound = true;
+                if (m.debuffs && m.debuffs.sleep > 0) {
+                    continue; // Sleep prevents actions
+                }
+                
+                if (m.atkCd === undefined) m.atkCd = m.atkSpeed || 2000;
+                m.atkCd -= 200;
+                
+                if (m.atkCd <= 0) {
+                    window.game.monsterAttack(i);
+                    let speed = m.atkSpeed || 2000;
+                    if (m.debuffs && m.debuffs.slow > 0 && !m.isBoss) speed += 1000;
+                    m.atkCd = speed;
+                }
+            }
+        }
+        
+        // Auto spawner if board is clear
+        if (!activeFound && window.game.state.isPlaying && window.game.state.hp > 0) {
+            window.game.spawnMonster();
+        }
+        
+        window.game.state.monsterLoop = setTimeout(monsterLoopFn, 200);
     };
     
     window.game.state.battleLoop = setTimeout(playerLoopFn, 1000);
@@ -762,6 +1122,11 @@ window.game.stopBattle = function() {
     clearTimeout(window.game.state.monsterLoop);
 };
 
-window.onload = () => {
+// Run initialization directly since the DOM is already parsed
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
     window.game.init();
-};
+} else {
+    window.onload = () => {
+        window.game.init();
+    };
+}
