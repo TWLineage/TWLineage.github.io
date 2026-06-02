@@ -1,38 +1,408 @@
 // 遊戲主循環與初始化生命週期 (v0.2.3)
 window.game = window.game || {};
 
+// Ensure quickslots configuration exists and returns it
+window.game.getQuickslots = function() {
+    if (!window.game.state.settings) {
+        window.game.state.settings = {};
+    }
+    if (!window.game.state.settings.quickslots) {
+        window.game.state.settings.quickslots = {
+            f5: { type: 'potion', itemId: 'potion_red' },
+            f6: { type: 'spell', spellId: 'light_arrow' },
+            f7: { type: 'spell', spellId: 'heal' },
+            f8: { type: 'spell', spellId: 'haste' },
+            f9: { type: 'none' },
+            f10: { type: 'none' },
+            f11: { type: 'none' },
+            f12: { type: 'none' }
+        };
+    }
+    return window.game.state.settings.quickslots;
+};
+
 // Quickslot key binders (F5-F12)
 window.game.triggerQuickslot = function(slotId) {
-    if (slotId === 'f5') {
-        let type = window.game.state.settings.autoHpType;
+    if (window.game.state.buffs.petrified > 0 || window.game.state.buffs.stun > 0) {
+        window.game.logCombat(`異常狀態中無法使用快捷鍵。`, 'danger');
+        return;
+    }
+    
+    const slots = window.game.getQuickslots();
+    const binding = slots[slotId];
+    if (!binding || binding.type === 'none') {
+        window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()} 目前未設定任何功能。`, 'normal');
+        return;
+    }
+    
+    if (binding.type === 'potion') {
+        const itemId = binding.itemId;
         let potKey = null;
-        for(let k in window.game.state.inventory) { if(window.game.state.inventory[k].itemId === type) { potKey = k; break; } }
+        for (let k in window.game.state.inventory) {
+            if (window.game.state.inventory[k].itemId === itemId) {
+                potKey = k;
+                break;
+            }
+        }
+        let count = potKey ? window.game.state.inventory[potKey].count : 0;
+        
+        // Auto-buy helper when count is 0
+        if (count <= 0) {
+            let shouldBuy = false;
+            let price = window.ITEMS[itemId]?.price || 0;
+            if (itemId === 'potion_red' || itemId === 'potion_orange' || itemId === 'potion_clear') {
+                shouldBuy = window.game.state.settings.autoBuyHp;
+            } else if (itemId === 'potion_blue') {
+                shouldBuy = window.game.state.settings.autoBuyMp;
+            } else if (itemId === 'potion_wisdom') {
+                shouldBuy = window.game.state.settings.autoBuyWis;
+            }
+            
+            if (shouldBuy && price > 0) {
+                let countToBuy = Math.min(100, Math.floor(window.game.state.adena / price));
+                if (countToBuy > 0) {
+                    window.game.state.adena -= price * countToBuy;
+                    window.game.addInventory(itemId, countToBuy, 0, false);
+                    potKey = Object.keys(window.game.state.inventory).find(k => window.game.state.inventory[k].itemId === itemId);
+                    window.game.logSystem(`自動購買了 ${countToBuy} 瓶 ${window.ITEMS[itemId].name}。`);
+                    window.game.updateUI();
+                } else {
+                    window.game.logSystem(`金幣不足，無法自動購買 ${window.ITEMS[itemId].name}！`, 'danger');
+                }
+            }
+        }
+        
+        // Use potion if we have it now
         if (potKey && window.game.state.inventory[potKey].count > 0) {
             window.game.usePotion(potKey);
         } else {
-            window.game.logSystem(`快捷鍵 F5：身上沒有 ${window.ITEMS[type]?.name || '治癒藥水'}！`, 'danger');
+            window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()}：身上沒有 ${window.ITEMS[itemId]?.name || itemId}！`, 'danger');
         }
-    } else if (slotId === 'f6') {
-        let sId = window.game.state.settings.autoAttack;
-        if (sId !== 'none' && window.SPELLS[sId]) {
-            // Find active target
-            let activeTarget = false;
-            for (let i = 0; i < 5; i++) {
-                if (window.game.state.targetMonsters[i]) {
-                    activeTarget = true;
+    } else if (binding.type === 'spell') {
+        const spellId = binding.spellId;
+        const sp = window.SPELLS[spellId];
+        if (!sp) return;
+        
+        if (!window.game.state.spells.includes(spellId)) {
+            window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()}：尚未學習魔法 ${sp.name}！`, 'danger');
+            return;
+        }
+        
+        let cost = window.game.getSpellCost ? window.game.getSpellCost(sp) : (sp.mp || 0);
+        if (window.game.state.mp < cost) {
+            window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()}：魔力不足以施放 ${sp.name}！ (需要 ${cost} MP)`, 'danger');
+            return;
+        }
+        
+        if (sp.type === 'attack') {
+            let activeTargetIndex = -1;
+            if (window.game.state.selectedTargetIndex !== null && window.game.state.targetMonsters[window.game.state.selectedTargetIndex]) {
+                activeTargetIndex = window.game.state.selectedTargetIndex;
+            } else {
+                for (let i = 0; i < 5; i++) {
+                    if (window.game.state.targetMonsters[i]) {
+                        activeTargetIndex = i;
+                        window.game.state.selectedTargetIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (activeTargetIndex !== -1) {
+                window.game.castManualAttackSpell(spellId, activeTargetIndex);
+            } else {
+                window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()}：沒有戰鬥目標！`, 'warn');
+            }
+        } else if (sp.type === 'heal') {
+            window.game.state.mp -= cost;
+            let h = sp.healBase || 0;
+            if (window.game.state.buffs.potion_wisdom) h += 5;
+            if (window.game.state.buffs.heal_erosion) h = Math.floor(h / 2);
+            window.game.state.hp = Math.min(window.game.state.maxHp, window.game.state.hp + h);
+            window.game.logCombat(`手動施放了 ${sp.name}。恢復了 ${h} 點體力。`, 'info');
+            window.game.updateUI();
+        } else if (sp.type === 'buff') {
+            window.game.state.mp -= cost;
+            window.game.state.buffs[sp.id] = sp.duration;
+            window.game.logCombat(`手動施放了 ${sp.name}。`, 'info');
+            window.game.updateUI();
+        }
+    }
+};
+
+// Render the quickslots items and spells dynamically
+window.game.updateQuickslotsUI = function() {
+    const slots = window.game.getQuickslots();
+    const ids = ['f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'];
+    
+    ids.forEach(slotId => {
+        const el = document.getElementById(`slot-${slotId}`);
+        if (!el) return;
+        
+        const binding = slots[slotId];
+        let html = `<span class="absolute top-0.5 left-1 text-[8px] text-gray-400 font-bold uppercase">${slotId}</span>`;
+        
+        if (!binding || binding.type === 'none') {
+            html += `
+                <i class="fas fa-plus text-gray-800 text-base mt-1"></i>
+                <span class="absolute bottom-0.5 text-[8px] text-gray-600 scale-90">未設定</span>
+            `;
+            el.className = "h-[48px] border border-[#1b1c23] bg-[#0c0d10]/90 rounded relative flex flex-col items-center justify-center opacity-40 cursor-pointer hover:border-amber-600";
+        } else if (binding.type === 'potion') {
+            const itemId = binding.itemId;
+            const itemDef = window.ITEMS[itemId];
+            
+            let count = 0;
+            for (let k in window.game.state.inventory) {
+                if (window.game.state.inventory[k].itemId === itemId) {
+                    count = window.game.state.inventory[k].count;
                     break;
                 }
             }
-            if (activeTarget) {
-                window.game.playerMagicAttack();
-            } else {
-                window.game.logSystem(`快捷鍵 F6：沒有戰鬥目標！`, 'warn');
+            
+            let colorClass = 'text-gray-400';
+            if (itemId === 'potion_red') colorClass = 'text-red-500';
+            else if (itemId === 'potion_orange') colorClass = 'text-orange-500';
+            else if (itemId === 'potion_clear') colorClass = 'text-slate-100';
+            else if (itemId === 'potion_blue') colorClass = 'text-blue-500';
+            else if (itemId === 'potion_wisdom') colorClass = 'text-purple-500';
+            
+            html += `
+                <i class="fas fa-flask ${colorClass} text-base mt-1"></i>
+                <span class="absolute bottom-0.5 text-[8px] text-gray-300 scale-90 font-mono font-bold">${itemDef ? itemDef.name.substring(0, 2) : itemId} x${count}</span>
+            `;
+            el.className = `h-[48px] border ${count > 0 ? 'border-amber-900/60 bg-[#16130f]' : 'border-zinc-800 bg-[#0c0d10]'} rounded relative flex flex-col items-center justify-center cursor-pointer hover:border-amber-600`;
+        } else if (binding.type === 'spell') {
+            const spellId = binding.spellId;
+            const sp = window.SPELLS[spellId];
+            
+            let iconClass = 'fas fa-magic';
+            if (sp && sp.type === 'attack') iconClass = 'fas fa-bolt text-sky-400';
+            else if (sp && sp.type === 'heal') iconClass = 'fas fa-heart text-red-400';
+            else if (sp && sp.type === 'buff') iconClass = 'fas fa-shield-alt text-amber-400';
+            
+            const isLearned = window.game.state.spells.includes(spellId);
+            
+            html += `
+                <i class="${iconClass} text-base mt-1 ${isLearned ? '' : 'opacity-30'}"></i>
+                <span class="absolute bottom-0.5 text-[8px] ${isLearned ? 'text-gray-300' : 'text-red-500'} scale-90 font-bold">${sp ? sp.name.substring(0, 2) : spellId}</span>
+            `;
+            el.className = `h-[48px] border ${isLearned ? 'border-amber-900/60 bg-[#131710]' : 'border-red-950/60 bg-[#100c0c]'} rounded relative flex flex-col items-center justify-center cursor-pointer hover:border-amber-600`;
+        }
+        
+        el.innerHTML = html;
+    });
+};
+
+// Customizable quickslot popup configurations managers
+window.game.activeConfigSlotId = null;
+
+window.game.openQuickslotConfig = function(slotId, e) {
+    window.game.activeConfigSlotId = slotId;
+    
+    const pop = document.getElementById('quickslot-config');
+    if (!pop) return;
+    
+    document.getElementById('quickslot-config-title').innerText = slotId;
+    
+    const slots = window.game.getQuickslots();
+    const binding = slots[slotId] || { type: 'none' };
+    
+    document.getElementById('quickslot-config-type').value = binding.type;
+    
+    window.game.onQuickslotConfigTypeChange();
+    
+    if (binding.type !== 'none') {
+        const itemSelect = document.getElementById('quickslot-config-item');
+        const val = binding.type === 'potion' ? binding.itemId : binding.spellId;
+        if (Array.from(itemSelect.options).some(opt => opt.value === val)) {
+            itemSelect.value = val;
+        }
+    }
+    
+    pop.classList.remove('hidden');
+    
+    const rect = document.getElementById(`slot-${slotId}`).getBoundingClientRect();
+    pop.style.left = `${Math.max(10, Math.floor(rect.left + (rect.width - 280) / 2))}px`;
+    pop.style.top = `${Math.max(10, Math.floor(rect.top - 180))}px`;
+};
+
+window.game.onQuickslotConfigTypeChange = function() {
+    const type = document.getElementById('quickslot-config-type').value;
+    const container = document.getElementById('quickslot-config-item-container');
+    const select = document.getElementById('quickslot-config-item');
+    
+    if (type === 'none') {
+        container.classList.add('hidden');
+    } else if (type === 'potion') {
+        select.innerHTML = `
+            <option value="potion_red">治癒藥水 (紅水)</option>
+            <option value="potion_orange">強力治癒藥水 (澄水)</option>
+            <option value="potion_clear">終極治癒藥水 (白水)</option>
+            <option value="potion_blue">藍色藥水 (藍水)</option>
+            <option value="potion_wisdom">慎重藥水 (慎重)</option>
+        `;
+        container.classList.remove('hidden');
+    } else if (type === 'spell') {
+        select.innerHTML = '';
+        if (window.game.state.spells && window.game.state.spells.length > 0) {
+            window.game.state.spells.forEach(sid => {
+                const sp = window.SPELLS[sid];
+                if (sp) select.innerHTML += `<option value="${sid}">${sp.name}</option>`;
+            });
+        }
+        if (select.innerHTML === '') {
+            select.innerHTML = '<option value="">(尚未學習任何魔法)</option>';
+        }
+        container.classList.remove('hidden');
+    }
+};
+
+window.game.saveQuickslotConfig = function() {
+    const slotId = window.game.activeConfigSlotId;
+    if (!slotId) return;
+    
+    const type = document.getElementById('quickslot-config-type').value;
+    const itemVal = document.getElementById('quickslot-config-item').value;
+    
+    const slots = window.game.getQuickslots();
+    
+    if (type === 'none') {
+        slots[slotId] = { type: 'none' };
+    } else if (type === 'potion') {
+        slots[slotId] = { type: 'potion', itemId: itemVal };
+    } else if (type === 'spell') {
+        if (!itemVal || itemVal === '') {
+            alert('您尚未選擇可使用的魔法！');
+            return;
+        }
+        slots[slotId] = { type: 'spell', spellId: itemVal };
+    }
+    
+    window.game.closeQuickslotConfig();
+    window.game.updateQuickslotsUI();
+    window.game.logSystem(`已設定快捷鍵 ${slotId.toUpperCase()}。`, 'normal');
+    if (window.game.saveGame) window.game.saveGame();
+};
+
+window.game.closeQuickslotConfig = function() {
+    const pop = document.getElementById('quickslot-config');
+    if (pop) pop.classList.add('hidden');
+    window.game.activeConfigSlotId = null;
+};
+
+// Cast manual magic attack spell
+window.game.castManualAttackSpell = function(spellId, targetIndex) {
+    let cls = window.game.state.class || 'prince';
+    let spell = window.SPELLS[spellId];
+    if (!spell) return;
+    
+    let isAoESpell = ['fireball', 'lightning_storm', 'blizzard', 'fire_storm', 'tornado', 'quake'].includes(spell.id);
+    let isMageAoE = isAoESpell && (cls === 'mage');
+    
+    let targetMonster = window.game.state.targetMonsters[targetIndex];
+    if (!targetMonster || window.game.state.hp <= 0 || (window.game.state.buffs.petrified > 0) || (window.game.state.buffs.stun > 0)) return;
+    
+    let cost = window.game.getSpellCost ? window.game.getSpellCost(spell) : (spell.mp || 0);
+    if (window.game.state.mp < cost) return;
+    
+    window.game.state.mp -= cost;
+    window.game.updateUI();
+    
+    let ccDuration = spell.duration || 0;
+    if (cls === 'illusionist') {
+        ccDuration = Math.floor(ccDuration * 1.5);
+    }
+    
+    const castOnMonster = (m, slotIdx) => {
+        if (spell.id === 'slow') {
+            m.debuffs.slow = ccDuration; 
+            window.game.logCombat(`手動施放了 ${spell.name}，${m.isBoss ? '但對頭目無效' : `[Slot ${slotIdx + 1}] ${m.name} 動作變慢了`}。`, 'magic');
+            return;
+        }
+
+        if (spell.id === 'sleep_mist') {
+            let secs = window.rollDice('1d8');
+            if (cls === 'illusionist') secs = Math.floor(secs * 1.5);
+            m.debuffs.sleep = secs;
+            window.game.logCombat(`手動施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 陷入沉睡 ${secs} 秒。`, 'magic');
+            return;
+        }
+        
+        if (spell.id === 'darkness') {
+            m.debuffs.darkness = ccDuration;
+            window.game.logCombat(`手動施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 被黑闇籠罩(命中-5)。`, 'magic');
+            return;
+        }
+
+        if (spell.id === 'disease') {
+            m.debuffs.disease = ccDuration;
+            window.game.logCombat(`手動施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 感染了疾病(命中-4, AC+8)。`, 'magic');
+            return;
+        }
+
+        if (spell.id === 'weapon_break') {
+            m.debuffs.weapon_break = ccDuration;
+            window.game.logCombat(`手動施放了 ${spell.name}，[Slot ${slotIdx + 1}] ${m.name} 武器受損(傷害-10)。`, 'magic');
+            return;
+        }
+
+        if (spell.dice) {
+            let totalDmg = 0;
+            let mDmg = window.game.getMagicDmg();
+            let hits = 1;
+            let diceExp = spell.dice;
+            let baseDmg = spell.baseDmg || 0;
+            let lastHitBonus = 0;
+            
+            if (spell.id === 'fireball') { hits = 3; diceExp = '1d16'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'lightning_storm') { hits = 9; diceExp = '1d18'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'blizzard') { hits = 11; diceExp = '1d10'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'fire_storm') { hits = 4; diceExp = '3d10'; baseDmg = 0; lastHitBonus = mDmg; }
+            else if (spell.id === 'tornado') { hits = 5; diceExp = '1d20'; baseDmg = 0; lastHitBonus = 5 + mDmg; }
+            else if (spell.id === 'earth_prison') { hits = 2; diceExp = '2d8'; baseDmg = 0; lastHitBonus = 0; }
+            else if (spell.id === 'quake') { hits = 4; diceExp = '3d6'; baseDmg = 0; lastHitBonus = mDmg; }
+            else { lastHitBonus = mDmg; }
+
+            for(let i=0; i<hits; i++) {
+                let d = 0;
+                if (spell.id === 'earth_prison') {
+                    d = i === 0 ? window.rollDice('2d8') : window.rollDice('2d10') + mDmg;
+                } else if (['blizzard', 'fire_storm', 'quake'].includes(spell.id)) {
+                     d = window.rollDice(diceExp) + baseDmg + mDmg;
+                } else {
+                     d = window.rollDice(diceExp) + baseDmg;
+                     if (i === hits - 1) d += lastHitBonus;
+                }
+                
+                let finalDmg = window.game.calcMagicDmgToMonster(d, m);
+                totalDmg += finalDmg;
             }
-        } else {
-            window.game.logSystem(`快捷鍵 F6：目前無設定自動攻擊魔法！`, 'warn');
+            
+            window.game.logCombat(`手動施放了 ${spell.name}，對 [Slot ${slotIdx + 1}] ${m.name} 造成 ${totalDmg} 點傷害。`, 'magic');
+            
+            m.hp -= totalDmg;
+            window.game.updateMonsterHpBar();
+            if(m.hp <= 0) window.game.monsterDied(slotIdx);
+        }
+    };
+    
+    if (isMageAoE) {
+        for (let i = 0; i < 5; i++) {
+            let m = window.game.state.targetMonsters[i];
+            if (m) {
+                castOnMonster(m, i);
+            }
         }
     } else {
-        window.game.logSystem(`快捷鍵 ${slotId.toUpperCase()} 目前無綁定功能。`, 'normal');
+        castOnMonster(targetMonster, targetIndex);
+    }
+    
+    if(spell.healDice) {
+        let h = window.rollDice(spell.healDice);
+        if (window.game.state.buffs.heal_erosion) h = Math.floor(h / 2);
+        window.game.state.hp = Math.min(window.game.state.maxHp, window.game.state.hp + h);
+        window.game.updateUI();
     }
 };
 
@@ -43,6 +413,7 @@ window.game.init = function() {
         window.game.switchForumTab('all');
         window.game.makeWindowsDraggable();
         window.game.updateBGMButton();
+        window.game.updateQuickslotsUI();
         
         // Autoplay bypass trigger on document interaction
         const startPlay = () => {
@@ -59,6 +430,20 @@ window.game.init = function() {
                 e.preventDefault();
                 const slotId = e.key.toLowerCase();
                 window.game.triggerQuickslot(slotId);
+            }
+        });
+
+        // Bind right-click/contextmenu and double-click customize to F5-F12 slots
+        const slots = ['f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'];
+        slots.forEach(slotId => {
+            const el = document.getElementById(`slot-${slotId}`);
+            if (el) {
+                const handler = (e) => {
+                    e.preventDefault();
+                    window.game.openQuickslotConfig(slotId, e);
+                };
+                el.addEventListener('contextmenu', handler);
+                el.addEventListener('dblclick', handler);
             }
         });
 
@@ -724,10 +1109,13 @@ window.game.startLoops = function() {
     }, 16000); 
     
     window.game.state.tickLoop = setInterval(() => {
-        if(!window.game.state.isPlaying || window.game.state.hp <= 0) return;
+        if(window.game.state.hp <= 0) return;
         
         let needUpdate = false;
-        let availSpells = window.game.getAvailableSpells();
+        let isPlaying = window.game.state.isPlaying;
+        
+        if (isPlaying) {
+            let availSpells = window.game.getAvailableSpells();
         
         if (window.game.state.buffs.petrified > 0 || window.game.state.buffs.heal_erosion > 0 || window.game.state.buffs.poison_storm > 0 || window.game.state.buffs.player_weapon_break > 0 || window.game.state.buffs.stun > 0) {
             if (window.game.state.settings.autoBuffs.includes('cancel') && window.game.state.mp >= 40) {
@@ -971,17 +1359,24 @@ window.game.startLoops = function() {
                     }
                 }
             }
+        } // end of if (isPlaying)
             
-            if(window.game.state.potionCooldown > 0) window.game.state.potionCooldown--;
+        if(window.game.state.potionCooldown > 0) window.game.state.potionCooldown--;
             if(window.game.state.potionCooldown <= 0 && window.game.state.hp < window.game.state.maxHp && window.game.state.hp <= window.game.state.settings.autoHpThreshold) {
                 let type = window.game.state.settings.autoHpType;
                 let potKey = null;
                 for(let k in window.game.state.inventory) { if(window.game.state.inventory[k].itemId === type) { potKey = k; break; } }
-                if(!potKey && window.game.state.settings.autoBuyHp && window.game.state.adena >= window.ITEMS[type].price * 100) {
-                    window.game.state.adena -= window.ITEMS[type].price * 100;
-                    window.game.addInventory(type, 100, 0, false);
-                    potKey = Object.keys(window.game.state.inventory).find(k => window.game.state.inventory[k].itemId === type);
-                    window.game.logSystem(`自動購買了 100 瓶 ${window.ITEMS[type].name}。`);
+                let currentCount = potKey ? window.game.state.inventory[potKey].count : 0;
+                if(currentCount <= 0 && window.game.state.settings.autoBuyHp) {
+                    let price = window.ITEMS[type].price;
+                    let countToBuy = Math.min(100, Math.floor(window.game.state.adena / price));
+                    if(countToBuy > 0) {
+                        window.game.state.adena -= price * countToBuy;
+                        window.game.addInventory(type, countToBuy, 0, false);
+                        potKey = Object.keys(window.game.state.inventory).find(k => window.game.state.inventory[k].itemId === type);
+                        window.game.logSystem(`自動購買了 ${countToBuy} 瓶 ${window.ITEMS[type].name}。`);
+                        needUpdate = true;
+                    }
                 }
                 if(potKey && window.game.state.inventory[potKey].count > 0) { window.game.usePotion(potKey); window.game.state.potionCooldown = 1; }
             }

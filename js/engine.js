@@ -428,7 +428,7 @@ window.game.toggleWindow = function(winId) {
 };
 
 window.game.bringToFront = function(win) {
-    const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs', 'win-forum', 'enchant-modal'];
+    const windows = ['win-status', 'win-inventory', 'win-spells', 'win-shop', 'win-map', 'win-logs', 'win-forum', 'enchant-modal', 'quickslot-config'];
     windows.forEach(id => {
         const w = document.getElementById(id);
         if (w) w.style.zIndex = "10";
@@ -1175,6 +1175,9 @@ window.game.updateUI = function() {
             spellNameEl.innerText = '無';
             spellIconEl.className = 'fas fa-bolt text-gray-700 text-lg mt-1';
         }
+    }
+    if (window.game.updateQuickslotsUI) {
+        window.game.updateQuickslotsUI();
     }
 };
 

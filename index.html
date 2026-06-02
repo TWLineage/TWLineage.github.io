@@ -650,6 +650,37 @@
                     <button class="btn-ui flex items-center justify-center gap-1 font-bold !px-1 text-[10px] border-orange-700/60 text-orange-400" onclick="game.toggleWindow('win-forum')"><i class="fas fa-comments"></i>討論</button>
                 </div>
             </div>
+
+            <!-- Quickslot Configuration Popover -->
+            <div id="quickslot-config" class="game-window hidden fixed w-[280px] h-[210px] min-h-[150px] min-w-[250px] z-50 text-xs" onclick="game.bringToFront(this)">
+                <div class="window-header flex justify-between items-center px-3 py-1.5 border-b border-[#5c4e37] cursor-pointer">
+                    <div class="flex items-center">
+                        <i class="fas fa-arrows-alt text-amber-500/80 mr-2.5 cursor-se-resize hover:text-amber-400 font-normal text-xs" title="可調整視窗大小 (拖曳左上角)"></i>
+                        <span class="font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-cog mr-1"></i>自訂快捷鍵 <span id="quickslot-config-title" class="uppercase text-white"></span></span>
+                    </div>
+                    <button class="text-gray-500 hover:text-white transition-colors" onclick="game.closeQuickslotConfig(); event.stopPropagation();"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="window-body p-3.5 space-y-3 bg-[#0a0c12]/95 backdrop-blur-sm flex-1 overflow-y-auto custom-scroll">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-gray-400 font-bold">功能類型：</label>
+                        <select id="quickslot-config-type" onchange="game.onQuickslotConfigTypeChange()" class="bg-black text-[#fbbf24] border border-gray-700 py-1 px-2 rounded outline-none cursor-pointer">
+                            <option value="none">未設定</option>
+                            <option value="potion">使用藥水</option>
+                            <option value="spell">施放魔法</option>
+                        </select>
+                    </div>
+                    <div id="quickslot-config-item-container" class="flex flex-col gap-1 hidden">
+                        <label class="text-gray-400 font-bold">選擇項目：</label>
+                        <select id="quickslot-config-item" class="bg-black text-white border border-gray-700 py-1 px-2 rounded outline-none cursor-pointer max-w-full">
+                            <!-- Options dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+                        <button class="btn-ui !px-3.5 !py-1 text-xs" onclick="game.saveQuickslotConfig()">確定</button>
+                        <button class="btn-ui !px-3.5 !py-1 text-xs opacity-60 hover:opacity-100" onclick="game.closeQuickslotConfig()">取消</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
