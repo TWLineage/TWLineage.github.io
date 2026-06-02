@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天堂放置版 - 傳說巨龍篇</title>
+    <title>天堂放置版 v0.2.3 - 傳說巨龍篇</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -25,6 +25,12 @@
         }
 
         .c-sys { color: #94a3b8; } 
+        #comments iframe {
+            min-height: 390px !important;
+            width: 100% !important;
+            border: none !important;
+            color-scheme: dark !important;
+        }
         .c-info { color: #38bdf8; text-shadow: 0 0 2px rgba(56, 189, 248, 0.2); } 
         .c-warn { color: #fbbf24; text-shadow: 0 0 2px rgba(251, 191, 36, 0.2); } 
         .c-err { color: #f87171; text-shadow: 0 0 2px rgba(248, 113, 113, 0.2); } 
@@ -380,7 +386,7 @@
                     <div class="flex items-center">精神 (WIS): <span id="create-wis" class="c-info w-8 inline-block text-right ml-2">8</span></div>
                     <div class="flex justify-end gap-2"><button class="btn-ui px-4" onclick="game.adjustStat('wis', -1)">-</button><button class="btn-ui px-4" onclick="game.adjustStat('wis', 1)">+</button></div>
                 </div>
-                <div class="text-center mb-6 text-xl">剩餘點數: <span id="create-points" class="c-warn font-bold">25</span></div>
+                <div class="text-center mb-6 text-xl">剩餘點數: <span id="create-points" class="c-warn font-bold">50</span></div>
                 <div class="flex gap-4">
                     <button class="btn-ui py-3 flex-1 text-lg" onclick="game.showStartMenu()">返回</button>
                     <button id="btn-start" class="btn-ui py-3 flex-1 text-lg c-success" disabled onclick="game.startGame()">進入世界</button>
@@ -549,8 +555,8 @@
                         <div class="list-item"><span class="c-potion-white font-bold">終極治癒藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">600 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_clear')">購買</button></div></div>
                         <div class="list-item"><span class="c-potion-blue font-bold">藍色藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">1046 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_blue')">購買</button></div></div>
                         <div class="list-item"><span class="c-potion-purple font-bold">慎重藥水</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">750 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('potion_wisdom')">購買</button></div></div>
-                        <div class="list-item mt-1.5 border-t border-gray-800 pt-2"><span class="c-item">對武器施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">75,000 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_weapon')">購買</button></div></div>
-                        <div class="list-item"><span class="c-item">對盔甲施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">30,000 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_armor')">購買</button></div></div>
+                        <div class="list-item mt-1.5 border-t border-gray-800 pt-2"><span class="c-item">對武器施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">1,000 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_weapon')">購買</button></div></div>
+                        <div class="list-item"><span class="c-item">對盔甲施法的卷軸</span> <div class="flex items-center gap-2"><span class="c-warn text-shadow">500 金幣</span> <button class="btn-ui !px-2.5 !py-0.5 text-xs" onclick="game.buyItem('scroll_armor')">購買</button></div></div>
                     </div>
                     
                     <!-- Automatic functions -->
@@ -636,7 +642,7 @@
             </div>
 
             <!-- Player Discussion Forum Window -->
-            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[460px] h-[500px] flex flex-col z-10" onclick="game.bringToFront(this)">
+            <div id="win-forum" class="game-window hidden absolute left-[20px] top-[40px] w-[500px] h-[600px] flex flex-col z-10" onclick="game.bringToFront(this)">
                 <div class="window-header flex justify-between items-center px-3 py-2 border-b border-[#4a3e2c] cursor-pointer">
                     <span class="text-sm font-bold text-[#fbbf24] tracking-wide"><i class="fas fa-comments mr-1.5"></i>玩家討論區</span>
                     <button class="text-gray-500 hover:text-white transition-colors" onclick="game.toggleWindow('win-forum'); event.stopPropagation();"><i class="fas fa-times"></i></button>
@@ -830,6 +836,11 @@
     </div>
 
 <script>
+// 遊戲倍率設定 (v0.2.3)
+const RateXp = 5;            // 經驗值倍率
+const RateDropAdena = 5;     // 金幣掉落數量倍率
+const RateDropItems = 5;     // 道具與卷軸掉落機率倍率
+
 const chineseNumbers = ["零","一","二","三","四","五","六","七","八","九","十"];
 function getChineseNumber(num) { return (num>=0 && num<=10) ? chineseNumbers[num] : num; }
 
@@ -978,9 +989,9 @@ const ITEMS = {
     amulet_int: { name: '智力項鍊', type: 'amulet', safe: 0, ac: 0, dropRate: 0.1, desc: '智力+1' },
     ring_wind: { name: '風靈戒指', type: 'ring', safe: 0, ac: 0, mr: 6, dropRate: 0.15 },
     amulet_str: { name: '力量項鍊', type: 'amulet', safe: 0, ac: 0, dropRate: 0.3, desc: '力量+1' },
-    scroll_weapon: { name: '對武器施法的卷軸', type: 'scroll', target: 'weapon', isBlessed: false, price: 75000 },
+    scroll_weapon: { name: '對武器施法的卷軸', type: 'scroll', target: 'weapon', isBlessed: false, price: 1000 },
     scroll_weapon_blessed: { name: '受祝福的對武器施法的卷軸', type: 'scroll', target: 'weapon', isBlessed: true },
-    scroll_armor: { name: '對盔甲施法的卷軸', type: 'scroll', target: 'armor', isBlessed: false, price: 30000 },
+    scroll_armor: { name: '對盔甲施法的卷軸', type: 'scroll', target: 'armor', isBlessed: false, price: 500 },
     scroll_armor_blessed: { name: '受祝福的對盔甲施法的卷軸', type: 'scroll', target: 'armor', isBlessed: true },
     scroll_accessory: { name: '對飾品施法的卷軸', type: 'scroll', target: 'accessory', isBlessed: false },
     potion_red: { name: '治癒藥水', type: 'potion_hp', heal: 15, price: 37 },
@@ -1223,7 +1234,7 @@ const MAPS = {
 const game = {
     state: {
         isPlaying: false, level: 1, exp: 0, adena: 0, hp: 0, maxHp: 0, mp: 0, maxMp: 0,
-        baseStats: { str: 8, dex: 8, con: 8, int: 8, wis: 8 }, createPoints: 25, bonusPoints: 0,
+        baseStats: { str: 8, dex: 8, con: 8, int: 8, wis: 8 }, createPoints: 50, bonusPoints: 0,
         inventory: {}, equipment: { weapon: null, shield: null, helmet: null, tshirt: null, armor: null, leggings: null, boots: null, cloak: null, gloves: null, amulet: null, earring1: null, earring2: null, ring1: null, ring2: null, belt: null },
         spells: [], buffs: {},
         settings: { autoHpThreshold: 5, autoHpType: 'potion_red', autoBuyHp: false, autoBuyMp: false, autoBuyWis: false, autoAttack: 'none', autoAttackMpThreshold: 0, autoBuffs: [], autoHealSpell: 'none', autoHealThreshold: 50 },
@@ -1232,7 +1243,7 @@ const game = {
         potionCooldown: 0, autoHealCd: 0, enchantTargetKey: null, zombieTick: 0, monsterSpecialTick: 0, antarasDeadUntil: 0,
         currentForumTab: 'all',
         forumMessages: [
-            { id: 1, author: '系統公告', tag: 'announce', content: '《天堂放置版v0.2.2 - 傳說巨龍篇》官方討論區正式開張！歡迎在此交流公會招募、交易物資及分享攻略。', time: '剛剛', likes: 45, laughs: 0, hearts: 68 },
+            { id: 1, author: '系統公告', tag: 'announce', content: '《天堂放置版v0.2.3 - 傳說巨龍篇》官方討論區正式開張！歡迎在此交流公會招募、交易物資及分享攻略。', time: '剛剛', likes: 45, laughs: 0, hearts: 68 },
             { id: 2, author: 'HanLin', tag: 'guide', content: '法師初期建議優先點智力(INT)跟精神(WIS)，魔攻跟魔力回復速度會差很多，4階的擬似魔武是近戰法必備！', time: '3分鐘前', likes: 18, laughs: 0, hearts: 12 },
             { id: 3, author: 'Amy', tag: 'guild', content: '【極道盟】招募熱血玩家！一起推王打寶，意者村莊右方會合！', time: '10分鐘前', likes: 9, laughs: 1, hearts: 15 },
             { id: 4, author: 'Tom', tag: 'trade', content: '出售 +7 瑪那魔杖，意者帶價，或換 +7 死亡騎士的烈炎之劍！', time: '15分鐘前', likes: 6, laughs: 2, hearts: 3 },
@@ -1262,6 +1273,85 @@ const game = {
             if (w) w.style.zIndex = "10";
         });
         win.style.zIndex = "25";
+    },
+    makeWindowsDraggable: function() {
+        const windows = document.querySelectorAll('.game-window');
+        windows.forEach(win => {
+            const header = win.querySelector('.window-header');
+            if (!header) return;
+            
+            header.style.cursor = 'move';
+            header.addEventListener('mousedown', dragStart);
+            header.addEventListener('touchstart', dragStart, { passive: true });
+            
+            let posX = 0, posY = 0, mouseX = 0, mouseY = 0;
+            
+            function dragStart(e) {
+                // Prevent dragging when clicking buttons, selects, or input elements
+                if (e.target.closest('button') || e.target.closest('i') || e.target.closest('input') || e.target.closest('select')) return;
+                
+                // Bring window to front
+                game.bringToFront(win);
+                
+                // For touch events
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                
+                mouseX = clientX;
+                mouseY = clientY;
+                
+                // Disable text selection during drag
+                document.body.style.userSelect = 'none';
+                
+                if (e.type === 'mousedown') {
+                    document.addEventListener('mousemove', dragMove);
+                    document.addEventListener('mouseup', dragEnd);
+                } else {
+                    document.addEventListener('touchmove', dragMove, { passive: false });
+                    document.addEventListener('touchend', dragEnd);
+                }
+            }
+            
+            function dragMove(e) {
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                
+                // Prevent scrolling on touch devices
+                if (e.type === 'touchmove') e.preventDefault();
+                
+                posX = mouseX - clientX;
+                posY = mouseY - clientY;
+                mouseX = clientX;
+                mouseY = clientY;
+                
+                // Calculate new position
+                let newTop = win.offsetTop - posY;
+                let newLeft = win.offsetLeft - posX;
+                
+                // Boundary checking so windows don't go off-screen
+                const minVisibleX = 50;
+                const minVisibleY = 30;
+                
+                if (newLeft < -win.offsetWidth + minVisibleX) newLeft = -win.offsetWidth + minVisibleX;
+                if (newLeft > window.innerWidth - minVisibleX) newLeft = window.innerWidth - minVisibleX;
+                if (newTop < 0) newTop = 0;
+                if (newTop > window.innerHeight - minVisibleY) newTop = window.innerHeight - minVisibleY;
+                
+                // Apply styling (override tailwind bottom/translate if set)
+                win.style.bottom = 'auto';
+                win.style.transform = 'none';
+                win.style.top = `${newTop}px`;
+                win.style.left = `${newLeft}px`;
+            }
+            
+            function dragEnd() {
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('touchmove', dragMove);
+                document.removeEventListener('touchend', dragEnd);
+            }
+        });
     },
     switchLogTab: function(tab) {
         const sysBtn = document.getElementById('tab-log-sys-btn');
@@ -1475,6 +1565,7 @@ const game = {
         this.renderMapSelect();
         this.checkSaveFile();
         this.switchForumTab('all');
+        this.makeWindowsDraggable();
         
         // Add window event listeners for Quickslots (F5-F12)
         window.addEventListener('keydown', (e) => {
@@ -1559,9 +1650,14 @@ const game = {
                     for (let slot in savedData.equipment) {
                         let eqKey = savedData.equipment[slot];
                         if (!eqKey) continue;
-                        if (migratedInv[eqKey]) equipmentMap[slot] = eqKey;
-                        else if (migratedInv[eqKey + '_false']) equipmentMap[slot] = eqKey + '_false';
-                        else if (migratedInv[eqKey + '_true']) equipmentMap[slot] = eqKey + '_true';
+                        
+                        let targetSlot = slot;
+                        if (slot === 'ring') targetSlot = 'ring1';
+                        if (slot === 'earring') targetSlot = 'earring1';
+                        
+                        if (migratedInv[eqKey]) equipmentMap[targetSlot] = eqKey;
+                        else if (migratedInv[eqKey + '_false']) equipmentMap[targetSlot] = eqKey + '_false';
+                        else if (migratedInv[eqKey + '_true']) equipmentMap[targetSlot] = eqKey + '_true';
                     }
                 }
 
@@ -1709,21 +1805,27 @@ const game = {
 
     getEffStat: function(stat) {
         let val = this.state.baseStats[stat];
-        if (stat === 'wis' || stat === 'con') {
-            let amuKey = this.state.equipment.amulet;
-            if (amuKey && this.state.inventory[amuKey]) {
-                let amuName = ITEMS[this.state.inventory[amuKey].itemId].name;
-                if (stat === 'wis' && amuName === '精神項鍊') val += 1;
-                if (stat === 'con' && amuName === '體質項鍊') val += 1;
-            }
+        
+        // Amulet slot modifiers
+        let amuKey = this.state.equipment.amulet;
+        if (amuKey && this.state.inventory[amuKey]) {
+            let amuId = this.state.inventory[amuKey].itemId;
+            if (stat === 'str' && amuId === 'amulet_str') val += 1;
+            if (stat === 'dex' && amuId === 'amulet_dex') val += 1;
+            if (stat === 'con' && amuId === 'amulet_con') val += 1;
+            if (stat === 'int' && amuId === 'amulet_int') val += 1;
+            if (stat === 'wis' && amuId === 'amulet_wis') val += 1;
         }
+        
+        // Gloves slot modifiers (Power Gloves: str + 2)
         if (stat === 'str' && this.state.equipment.gloves) {
             let gKey = this.state.equipment.gloves;
             if (this.state.inventory[gKey]) {
-                let gName = ITEMS[this.state.inventory[gKey].itemId].name;
-                if (gName === '力量手套') val += 2;
+                let gId = this.state.inventory[gKey].itemId;
+                if (gId === 'gloves_str') val += 2;
             }
         }
+        
         return val;
     },
 
@@ -1780,8 +1882,8 @@ const game = {
         }
         let robeKey = this.state.equipment.armor;
         if (robeKey && this.state.inventory[robeKey]) {
-            let robeName = ITEMS[this.state.inventory[robeKey].itemId].name;
-            if (robeName === '黑長者長袍') calcMaxMp += 50;
+            let robeId = this.state.inventory[robeKey].itemId;
+            if (robeId === 'robe_black_elder') calcMaxMp += 100;
         }
         this.state.maxMp = calcMaxMp;
         if(this.state.hp > this.state.maxHp) this.state.hp = this.state.maxHp;
@@ -2280,7 +2382,7 @@ const game = {
         if(!invList || !eqList) return;
         invList.innerHTML = ''; eqList.innerHTML = '';
         
-        let slotNames = { 'weapon': '武器', 'helmet': '頭盔', 'armor': '盔甲', 'shield': '盾牌', 'cloak': '斗篷', 'boots': '靴子', 'belt': '腰帶', 'amulet': '項鍊', 'ring': '戒指', 'gloves': '手套' };
+        let slotNames = { 'weapon': '武器', 'helmet': '頭盔', 'armor': '盔甲', 'shield': '盾牌', 'cloak': '斗篷', 'boots': '靴子', 'belt': '腰帶', 'amulet': '項鍊', 'ring1': '戒指 I', 'ring2': '戒指 II', 'earring1': '耳環 I', 'earring2': '耳環 II', 'gloves': '手套' };
         let activeSetItemKeys = [];
         let eqKeyToId = {};
         for(let slot in this.state.equipment) {
@@ -2403,6 +2505,16 @@ const game = {
         let def = ITEMS[item.itemId];
         if(!def) return;
         let slotToEquip = def.type;
+        
+        if (def.type === 'ring') {
+            if (!this.state.equipment.ring1) slotToEquip = 'ring1';
+            else if (!this.state.equipment.ring2) slotToEquip = 'ring2';
+            else slotToEquip = 'ring1';
+        } else if (def.type === 'earring') {
+            if (!this.state.equipment.earring1) slotToEquip = 'earring1';
+            else if (!this.state.equipment.earring2) slotToEquip = 'earring2';
+            else slotToEquip = 'earring1';
+        }
         
         if(def.type === 'weapon' && def.hands === 2 && this.state.equipment.shield) this.state.equipment.shield = null;
         if(def.type === 'shield' && this.state.equipment.weapon) {
@@ -2808,20 +2920,20 @@ const game = {
             dmg = Math.max(1, dDmg + this.getMeleeDmg() + bonusUndead);
             this.logCombat(`你命中了 ${this.state.targetMonster.name} 造成 ${dmg} 點傷害${isCrit?' (爆擊！)':''}${bonusUndead > 0 ? ` (弱點加成 +${bonusUndead})` : ''}。`, 'hit');
             
-            if (wDef && wDef.id === 'staff_mana') {
+            if (wpn && wpn.itemId === 'staff_mana') {
                 this.state.mp = Math.min(this.state.maxMp, this.state.mp + 1);
                 this.logCombat(`瑪那魔杖吸收了 1 點魔力。`);
                 this.updateUI();
             }
             
-            if (wDef && wDef.id === 'hammer_thor' && Math.random() * 100 < (5 + Number(wpn.enchant))) {
+            if (wpn && wpn.itemId === 'hammer_thor' && Math.random() * 100 < (5 + Number(wpn.enchant))) {
                 let sp = SPELLS['call_lightning'];
                 let finalDmg = this.calcMagicDmgToMonster(rollDice(sp.dice) + (sp.baseDmg||0) + this.getMagicDmg());
                 this.logCombat(`雷神之槌發動了 極道落雷，造成 ${finalDmg} 點傷害。`, 'magic');
                 this.state.targetMonster.hp -= finalDmg;
             }
             
-            if (wDef && wDef.id === 'sword_dk_fire' && Math.random() < 0.03) {
+            if (wpn && wpn.itemId === 'sword_dk_fire' && Math.random() < 0.15) {
                 let sp = SPELLS['fire_arrow'];
                 let finalDmg = this.calcMagicDmgToMonster(rollDice(sp.dice) + (sp.baseDmg||0) + this.getMagicDmg());
                 this.logCombat(`死亡騎士的烈炎之劍發動了 烈炎術，造成 ${finalDmg} 點傷害。`, 'magic');
@@ -2992,12 +3104,12 @@ const game = {
     },
     monsterDied: function() {
         let m = this.state.targetMonster;
-        this.state.exp += m.exp;
+        this.state.exp += m.exp * RateXp;
         
         let multi = m.isBoss ? 10 : 1;
         let goldMsg = '';
         if (Math.random() < 0.70) {
-            let adena = m.adena[0] + Math.floor(Math.random()*(m.adena[1]-m.adena[0]+1));
+            let adena = (m.adena[0] + Math.floor(Math.random()*(m.adena[1]-m.adena[0]+1))) * RateDropAdena;
             this.state.adena += adena;
             if (adena > 0) goldMsg = `獲得 ${adena} 金幣。`;
         }
@@ -3008,20 +3120,20 @@ const game = {
         let lv = m.level;
         
         if (lv >= 11) {
-            if(Math.random()*100 < 0.5 * multi) { this.addInventory('scroll_armor',1,0,false); this.logSystem(`${m.name} 給你 對盔甲施法的卷軸。`, 'reward'); }
-            if(Math.random()*100 < 0.01 * multi) { this.addInventory('scroll_armor_blessed',1,0,false); this.logSystem(`${m.name} 給你 受祝福的 對盔甲施法的卷軸。`, 'blessed'); }
+            if(Math.random()*100 < 0.5 * multi * RateDropItems) { this.addInventory('scroll_armor',1,0,false); this.logSystem(`${m.name} 給你 對盔甲施法的卷軸。`, 'reward'); }
+            if(Math.random()*100 < 0.01 * multi * RateDropItems) { this.addInventory('scroll_armor_blessed',1,0,false); this.logSystem(`${m.name} 給你 受祝福的 對盔甲施法的卷軸。`, 'blessed'); }
         }
         if (lv >= 21) {
-            if(Math.random()*100 < 0.5 * multi) { this.addInventory('scroll_weapon',1,0,false); this.logSystem(`${m.name} 給你 對武器施法的卷軸。`, 'reward'); }
-            if(Math.random()*100 < 0.01 * multi) { this.addInventory('scroll_weapon_blessed',1,0,false); this.logSystem(`${m.name} 給你 受祝福的 對武器施法的卷軸。`, 'blessed'); }
+            if(Math.random()*100 < 0.5 * multi * RateDropItems) { this.addInventory('scroll_weapon',1,0,false); this.logSystem(`${m.name} 給你 對武器施法的卷軸。`, 'reward'); }
+            if(Math.random()*100 < 0.01 * multi * RateDropItems) { this.addInventory('scroll_weapon_blessed',1,0,false); this.logSystem(`${m.name} 給你 受祝福的 對武器施法的卷軸。`, 'blessed'); }
         }
         if (lv >= 31) {
-            if(Math.random()*100 < 0.1 * multi) { this.addInventory('scroll_accessory',1,0,false); this.logSystem(`${m.name} 給你 對飾品施法的卷軸。`, 'reward'); }
+            if(Math.random()*100 < 0.1 * multi * RateDropItems) { this.addInventory('scroll_accessory',1,0,false); this.logSystem(`${m.name} 給你 對飾品施法的卷軸。`, 'reward'); }
         }
         
         if(m.drops) {
             m.drops.forEach(d => { 
-                if(Math.random()*100 < d.rate*multi) {
+                if(Math.random()*100 < d.rate * multi * RateDropItems) {
                     if(ITEMS[d.id] && ITEMS[d.id].type === 'book' && this.state.spells.includes(ITEMS[d.id].spellId)) {
                         let sell = 100 * Math.pow(SPELLS[ITEMS[d.id].spellId].level, 2);
                         this.state.adena += sell;
@@ -3139,13 +3251,13 @@ const game = {
                 
                 let robeKey = this.state.equipment.armor;
                 if(robeKey && this.state.inventory[robeKey]) {
-                    let robeDef = ITEMS[this.state.inventory[robeKey].itemId];
-                    if (robeDef && robeDef.name === '黑長者長袍') r += 12;
+                    let robeId = this.state.inventory[robeKey].itemId;
+                    if (robeId === 'robe_black_elder') r += 20;
                 }
                 let shoesKey = this.state.equipment.boots;
                 if(shoesKey && this.state.inventory[shoesKey]) {
-                    let shoesDef = ITEMS[this.state.inventory[shoesKey].itemId];
-                    if (shoesDef && shoesDef.name === '黑長者涼鞋') r += 5;
+                    let shoesId = this.state.inventory[shoesKey].itemId;
+                    if (shoesId === 'sandals_black_elder') r += 10;
                 }
                 
                 this.state.mp = Math.min(this.state.maxMp, this.state.mp + r);
